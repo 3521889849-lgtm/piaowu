@@ -2,6 +2,7 @@ package main
 
 import (
 	"context" // 必须导入，Test方法要用到ctx参数
+	_ "example_shop/common/init"
 	"example_shop/kitex_gen/coupon"
 	"example_shop/kitex_gen/coupon/couponservice"
 
