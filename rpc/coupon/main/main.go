@@ -9,6 +9,8 @@ import (
 
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
+
+	_ "common/init"
 )
 
 // 空结构体（无任何业务逻辑）
