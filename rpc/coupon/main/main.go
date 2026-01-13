@@ -1,41 +1,35 @@
 package main
 
 import (
-	"context" // 必须导入，Test方法要用到ctx参数
+	// 触发项目统一初始化：配置加载、MySQL/Redis 连接等
 	_ "example_shop/common/init"
-	"example_shop/kitex_gen/coupon"
+	// 业务 handler 放在 rpc/coupon 包中，main 只负责启动并注入实现
+	handler "example_shop/rpc/coupon"
+	// Kitex 生成的服务端注册代码
 	"example_shop/kitex_gen/coupon/couponservice"
 
 	"log"
 
+	// Kitex server 启动相关配置
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 )
 
-// 空结构体（无任何业务逻辑）
-type CouponServiceImpl struct{}
-
-// 【关键】补全Test方法的空实现（解决爆红核心）
-// 方法签名必须和Kitex生成的接口完全一致，一字不差！
-func (s *CouponServiceImpl) Test(ctx context.Context, req *coupon.EmptyReq) (*coupon.BaseResp, error) {
-	// 纯空逻辑：啥都不做，只返回默认成功响应
-	return &coupon.BaseResp{
-		Code: 200,
-		Msg:  "空方法执行成功（无任何业务逻辑）",
-	}, nil
-}
-
 func main() {
-	// 启动空服务
+	// 创建并启动 Kitex Server
 	svr := couponservice.NewServer(
-		new(CouponServiceImpl), // 现在这个结构体已实现全部接口，不再爆红
+		// 注入业务实现：已在 handler.go 中实现 Test/SpotList/SpotDetail 等方法
+		handler.NewCouponServiceImpl(),
 		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{
+			// 对外暴露的服务名（可在服务发现/治理中使用）
 			ServiceName: "coupon_service",
 		}),
 	)
 
+	// 启动服务并监听端口
 	log.Println("✅ 极简空服务启动成功！")
 	if err := svr.Run(); err != nil {
+		// 启动失败时打印错误信息
 		log.Println("启动失败：", err)
 	}
 }

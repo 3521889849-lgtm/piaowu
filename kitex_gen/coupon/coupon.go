@@ -4,8 +4,104 @@ package coupon
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"fmt"
 )
+
+type SpotSortField int64
+
+const (
+	SpotSortField_DEFAULT SpotSortField = 0
+	SpotSortField_SALES   SpotSortField = 1
+	SpotSortField_RATING  SpotSortField = 2
+	SpotSortField_PRICE   SpotSortField = 3
+)
+
+func (p SpotSortField) String() string {
+	switch p {
+	case SpotSortField_DEFAULT:
+		return "DEFAULT"
+	case SpotSortField_SALES:
+		return "SALES"
+	case SpotSortField_RATING:
+		return "RATING"
+	case SpotSortField_PRICE:
+		return "PRICE"
+	}
+	return "<UNSET>"
+}
+
+func SpotSortFieldFromString(s string) (SpotSortField, error) {
+	switch s {
+	case "DEFAULT":
+		return SpotSortField_DEFAULT, nil
+	case "SALES":
+		return SpotSortField_SALES, nil
+	case "RATING":
+		return SpotSortField_RATING, nil
+	case "PRICE":
+		return SpotSortField_PRICE, nil
+	}
+	return SpotSortField(0), fmt.Errorf("not a valid SpotSortField string")
+}
+
+func SpotSortFieldPtr(v SpotSortField) *SpotSortField { return &v }
+func (p *SpotSortField) Scan(value interface{}) (err error) {
+	var result sql.NullInt64
+	err = result.Scan(value)
+	*p = SpotSortField(result.Int64)
+	return
+}
+
+func (p *SpotSortField) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
+	return int64(*p), nil
+}
+
+type SortOrder int64
+
+const (
+	SortOrder_ASC  SortOrder = 0
+	SortOrder_DESC SortOrder = 1
+)
+
+func (p SortOrder) String() string {
+	switch p {
+	case SortOrder_ASC:
+		return "ASC"
+	case SortOrder_DESC:
+		return "DESC"
+	}
+	return "<UNSET>"
+}
+
+func SortOrderFromString(s string) (SortOrder, error) {
+	switch s {
+	case "ASC":
+		return SortOrder_ASC, nil
+	case "DESC":
+		return SortOrder_DESC, nil
+	}
+	return SortOrder(0), fmt.Errorf("not a valid SortOrder string")
+}
+
+func SortOrderPtr(v SortOrder) *SortOrder { return &v }
+func (p *SortOrder) Scan(value interface{}) (err error) {
+	var result sql.NullInt64
+	err = result.Scan(value)
+	*p = SortOrder(result.Int64)
+	return
+}
+
+func (p *SortOrder) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
+	return int64(*p), nil
+}
 
 type BaseResp struct {
 	Code int32  `thrift:"code,1" frugal:"1,default,i32" json:"code"`
@@ -74,8 +170,865 @@ var fieldIDToName_EmptyReq = map[int16]string{
 	1: "id",
 }
 
+type SpotListReq struct {
+	Keyword   *string        `thrift:"keyword,1,optional" frugal:"1,optional,string" json:"keyword,omitempty"`
+	Province  *string        `thrift:"province,2,optional" frugal:"2,optional,string" json:"province,omitempty"`
+	City      *string        `thrift:"city,3,optional" frugal:"3,optional,string" json:"city,omitempty"`
+	Tags      []string       `thrift:"tags,4,optional" frugal:"4,optional,list<string>" json:"tags,omitempty"`
+	Page      *int32         `thrift:"page,5,optional" frugal:"5,optional,i32" json:"page,omitempty"`
+	PageSize  *int32         `thrift:"page_size,6,optional" frugal:"6,optional,i32" json:"page_size,omitempty"`
+	SortField *SpotSortField `thrift:"sort_field,7,optional" frugal:"7,optional,SpotSortField" json:"sort_field,omitempty"`
+	SortOrder *SortOrder     `thrift:"sort_order,8,optional" frugal:"8,optional,SortOrder" json:"sort_order,omitempty"`
+}
+
+func NewSpotListReq() *SpotListReq {
+	return &SpotListReq{}
+}
+
+func (p *SpotListReq) InitDefault() {
+}
+
+var SpotListReq_Keyword_DEFAULT string
+
+func (p *SpotListReq) GetKeyword() (v string) {
+	if !p.IsSetKeyword() {
+		return SpotListReq_Keyword_DEFAULT
+	}
+	return *p.Keyword
+}
+
+var SpotListReq_Province_DEFAULT string
+
+func (p *SpotListReq) GetProvince() (v string) {
+	if !p.IsSetProvince() {
+		return SpotListReq_Province_DEFAULT
+	}
+	return *p.Province
+}
+
+var SpotListReq_City_DEFAULT string
+
+func (p *SpotListReq) GetCity() (v string) {
+	if !p.IsSetCity() {
+		return SpotListReq_City_DEFAULT
+	}
+	return *p.City
+}
+
+var SpotListReq_Tags_DEFAULT []string
+
+func (p *SpotListReq) GetTags() (v []string) {
+	if !p.IsSetTags() {
+		return SpotListReq_Tags_DEFAULT
+	}
+	return p.Tags
+}
+
+var SpotListReq_Page_DEFAULT int32
+
+func (p *SpotListReq) GetPage() (v int32) {
+	if !p.IsSetPage() {
+		return SpotListReq_Page_DEFAULT
+	}
+	return *p.Page
+}
+
+var SpotListReq_PageSize_DEFAULT int32
+
+func (p *SpotListReq) GetPageSize() (v int32) {
+	if !p.IsSetPageSize() {
+		return SpotListReq_PageSize_DEFAULT
+	}
+	return *p.PageSize
+}
+
+var SpotListReq_SortField_DEFAULT SpotSortField
+
+func (p *SpotListReq) GetSortField() (v SpotSortField) {
+	if !p.IsSetSortField() {
+		return SpotListReq_SortField_DEFAULT
+	}
+	return *p.SortField
+}
+
+var SpotListReq_SortOrder_DEFAULT SortOrder
+
+func (p *SpotListReq) GetSortOrder() (v SortOrder) {
+	if !p.IsSetSortOrder() {
+		return SpotListReq_SortOrder_DEFAULT
+	}
+	return *p.SortOrder
+}
+func (p *SpotListReq) SetKeyword(val *string) {
+	p.Keyword = val
+}
+func (p *SpotListReq) SetProvince(val *string) {
+	p.Province = val
+}
+func (p *SpotListReq) SetCity(val *string) {
+	p.City = val
+}
+func (p *SpotListReq) SetTags(val []string) {
+	p.Tags = val
+}
+func (p *SpotListReq) SetPage(val *int32) {
+	p.Page = val
+}
+func (p *SpotListReq) SetPageSize(val *int32) {
+	p.PageSize = val
+}
+func (p *SpotListReq) SetSortField(val *SpotSortField) {
+	p.SortField = val
+}
+func (p *SpotListReq) SetSortOrder(val *SortOrder) {
+	p.SortOrder = val
+}
+
+func (p *SpotListReq) IsSetKeyword() bool {
+	return p.Keyword != nil
+}
+
+func (p *SpotListReq) IsSetProvince() bool {
+	return p.Province != nil
+}
+
+func (p *SpotListReq) IsSetCity() bool {
+	return p.City != nil
+}
+
+func (p *SpotListReq) IsSetTags() bool {
+	return p.Tags != nil
+}
+
+func (p *SpotListReq) IsSetPage() bool {
+	return p.Page != nil
+}
+
+func (p *SpotListReq) IsSetPageSize() bool {
+	return p.PageSize != nil
+}
+
+func (p *SpotListReq) IsSetSortField() bool {
+	return p.SortField != nil
+}
+
+func (p *SpotListReq) IsSetSortOrder() bool {
+	return p.SortOrder != nil
+}
+
+func (p *SpotListReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("SpotListReq(%+v)", *p)
+}
+
+var fieldIDToName_SpotListReq = map[int16]string{
+	1: "keyword",
+	2: "province",
+	3: "city",
+	4: "tags",
+	5: "page",
+	6: "page_size",
+	7: "sort_field",
+	8: "sort_order",
+}
+
+type SpotBrief struct {
+	SpotId   int64    `thrift:"spot_id,1" frugal:"1,default,i64" json:"spot_id"`
+	SpotName string   `thrift:"spot_name,2" frugal:"2,default,string" json:"spot_name"`
+	Province string   `thrift:"province,3" frugal:"3,default,string" json:"province"`
+	City     string   `thrift:"city,4" frugal:"4,default,string" json:"city"`
+	Address  string   `thrift:"address,5" frugal:"5,default,string" json:"address"`
+	CoverImg string   `thrift:"cover_img,6" frugal:"6,default,string" json:"cover_img"`
+	OpenTime string   `thrift:"open_time,7" frugal:"7,default,string" json:"open_time"`
+	MinPrice int64    `thrift:"min_price,8" frugal:"8,default,i64" json:"min_price"`
+	Sales    *int64   `thrift:"sales,9,optional" frugal:"9,optional,i64" json:"sales,omitempty"`
+	Rating   *float64 `thrift:"rating,10,optional" frugal:"10,optional,double" json:"rating,omitempty"`
+	Tags     []string `thrift:"tags,11,optional" frugal:"11,optional,list<string>" json:"tags,omitempty"`
+}
+
+func NewSpotBrief() *SpotBrief {
+	return &SpotBrief{}
+}
+
+func (p *SpotBrief) InitDefault() {
+}
+
+func (p *SpotBrief) GetSpotId() (v int64) {
+	return p.SpotId
+}
+
+func (p *SpotBrief) GetSpotName() (v string) {
+	return p.SpotName
+}
+
+func (p *SpotBrief) GetProvince() (v string) {
+	return p.Province
+}
+
+func (p *SpotBrief) GetCity() (v string) {
+	return p.City
+}
+
+func (p *SpotBrief) GetAddress() (v string) {
+	return p.Address
+}
+
+func (p *SpotBrief) GetCoverImg() (v string) {
+	return p.CoverImg
+}
+
+func (p *SpotBrief) GetOpenTime() (v string) {
+	return p.OpenTime
+}
+
+func (p *SpotBrief) GetMinPrice() (v int64) {
+	return p.MinPrice
+}
+
+var SpotBrief_Sales_DEFAULT int64
+
+func (p *SpotBrief) GetSales() (v int64) {
+	if !p.IsSetSales() {
+		return SpotBrief_Sales_DEFAULT
+	}
+	return *p.Sales
+}
+
+var SpotBrief_Rating_DEFAULT float64
+
+func (p *SpotBrief) GetRating() (v float64) {
+	if !p.IsSetRating() {
+		return SpotBrief_Rating_DEFAULT
+	}
+	return *p.Rating
+}
+
+var SpotBrief_Tags_DEFAULT []string
+
+func (p *SpotBrief) GetTags() (v []string) {
+	if !p.IsSetTags() {
+		return SpotBrief_Tags_DEFAULT
+	}
+	return p.Tags
+}
+func (p *SpotBrief) SetSpotId(val int64) {
+	p.SpotId = val
+}
+func (p *SpotBrief) SetSpotName(val string) {
+	p.SpotName = val
+}
+func (p *SpotBrief) SetProvince(val string) {
+	p.Province = val
+}
+func (p *SpotBrief) SetCity(val string) {
+	p.City = val
+}
+func (p *SpotBrief) SetAddress(val string) {
+	p.Address = val
+}
+func (p *SpotBrief) SetCoverImg(val string) {
+	p.CoverImg = val
+}
+func (p *SpotBrief) SetOpenTime(val string) {
+	p.OpenTime = val
+}
+func (p *SpotBrief) SetMinPrice(val int64) {
+	p.MinPrice = val
+}
+func (p *SpotBrief) SetSales(val *int64) {
+	p.Sales = val
+}
+func (p *SpotBrief) SetRating(val *float64) {
+	p.Rating = val
+}
+func (p *SpotBrief) SetTags(val []string) {
+	p.Tags = val
+}
+
+func (p *SpotBrief) IsSetSales() bool {
+	return p.Sales != nil
+}
+
+func (p *SpotBrief) IsSetRating() bool {
+	return p.Rating != nil
+}
+
+func (p *SpotBrief) IsSetTags() bool {
+	return p.Tags != nil
+}
+
+func (p *SpotBrief) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("SpotBrief(%+v)", *p)
+}
+
+var fieldIDToName_SpotBrief = map[int16]string{
+	1:  "spot_id",
+	2:  "spot_name",
+	3:  "province",
+	4:  "city",
+	5:  "address",
+	6:  "cover_img",
+	7:  "open_time",
+	8:  "min_price",
+	9:  "sales",
+	10: "rating",
+	11: "tags",
+}
+
+type SpotListResp struct {
+	Base  *BaseResp    `thrift:"base,1" frugal:"1,default,BaseResp" json:"base"`
+	Total int64        `thrift:"total,2" frugal:"2,default,i64" json:"total"`
+	List  []*SpotBrief `thrift:"list,3" frugal:"3,default,list<SpotBrief>" json:"list"`
+}
+
+func NewSpotListResp() *SpotListResp {
+	return &SpotListResp{}
+}
+
+func (p *SpotListResp) InitDefault() {
+}
+
+var SpotListResp_Base_DEFAULT *BaseResp
+
+func (p *SpotListResp) GetBase() (v *BaseResp) {
+	if !p.IsSetBase() {
+		return SpotListResp_Base_DEFAULT
+	}
+	return p.Base
+}
+
+func (p *SpotListResp) GetTotal() (v int64) {
+	return p.Total
+}
+
+func (p *SpotListResp) GetList() (v []*SpotBrief) {
+	return p.List
+}
+func (p *SpotListResp) SetBase(val *BaseResp) {
+	p.Base = val
+}
+func (p *SpotListResp) SetTotal(val int64) {
+	p.Total = val
+}
+func (p *SpotListResp) SetList(val []*SpotBrief) {
+	p.List = val
+}
+
+func (p *SpotListResp) IsSetBase() bool {
+	return p.Base != nil
+}
+
+func (p *SpotListResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("SpotListResp(%+v)", *p)
+}
+
+var fieldIDToName_SpotListResp = map[int16]string{
+	1: "base",
+	2: "total",
+	3: "list",
+}
+
+type TicketTypeInfo struct {
+	TicketTypeId  int64  `thrift:"ticket_type_id,1" frugal:"1,default,i64" json:"ticket_type_id"`
+	TicketName    string `thrift:"ticket_name,2" frugal:"2,default,string" json:"ticket_name"`
+	Price         int64  `thrift:"price,3" frugal:"3,default,i64" json:"price"`
+	OriginalPrice int64  `thrift:"original_price,4" frugal:"4,default,i64" json:"original_price"`
+	Stock         int32  `thrift:"stock,5" frugal:"5,default,i32" json:"stock"`
+	TicketStatus  string `thrift:"ticket_status,6" frugal:"6,default,string" json:"ticket_status"`
+	RefundRule    string `thrift:"refund_rule,7" frugal:"7,default,string" json:"refund_rule"`
+	UseRule       string `thrift:"use_rule,8" frugal:"8,default,string" json:"use_rule"`
+}
+
+func NewTicketTypeInfo() *TicketTypeInfo {
+	return &TicketTypeInfo{}
+}
+
+func (p *TicketTypeInfo) InitDefault() {
+}
+
+func (p *TicketTypeInfo) GetTicketTypeId() (v int64) {
+	return p.TicketTypeId
+}
+
+func (p *TicketTypeInfo) GetTicketName() (v string) {
+	return p.TicketName
+}
+
+func (p *TicketTypeInfo) GetPrice() (v int64) {
+	return p.Price
+}
+
+func (p *TicketTypeInfo) GetOriginalPrice() (v int64) {
+	return p.OriginalPrice
+}
+
+func (p *TicketTypeInfo) GetStock() (v int32) {
+	return p.Stock
+}
+
+func (p *TicketTypeInfo) GetTicketStatus() (v string) {
+	return p.TicketStatus
+}
+
+func (p *TicketTypeInfo) GetRefundRule() (v string) {
+	return p.RefundRule
+}
+
+func (p *TicketTypeInfo) GetUseRule() (v string) {
+	return p.UseRule
+}
+func (p *TicketTypeInfo) SetTicketTypeId(val int64) {
+	p.TicketTypeId = val
+}
+func (p *TicketTypeInfo) SetTicketName(val string) {
+	p.TicketName = val
+}
+func (p *TicketTypeInfo) SetPrice(val int64) {
+	p.Price = val
+}
+func (p *TicketTypeInfo) SetOriginalPrice(val int64) {
+	p.OriginalPrice = val
+}
+func (p *TicketTypeInfo) SetStock(val int32) {
+	p.Stock = val
+}
+func (p *TicketTypeInfo) SetTicketStatus(val string) {
+	p.TicketStatus = val
+}
+func (p *TicketTypeInfo) SetRefundRule(val string) {
+	p.RefundRule = val
+}
+func (p *TicketTypeInfo) SetUseRule(val string) {
+	p.UseRule = val
+}
+
+func (p *TicketTypeInfo) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("TicketTypeInfo(%+v)", *p)
+}
+
+var fieldIDToName_TicketTypeInfo = map[int16]string{
+	1: "ticket_type_id",
+	2: "ticket_name",
+	3: "price",
+	4: "original_price",
+	5: "stock",
+	6: "ticket_status",
+	7: "refund_rule",
+	8: "use_rule",
+}
+
+type ReviewInfo struct {
+	UserId    *int64   `thrift:"user_id,1,optional" frugal:"1,optional,i64" json:"user_id,omitempty"`
+	UserName  *string  `thrift:"user_name,2,optional" frugal:"2,optional,string" json:"user_name,omitempty"`
+	Rating    *float64 `thrift:"rating,3,optional" frugal:"3,optional,double" json:"rating,omitempty"`
+	Content   *string  `thrift:"content,4,optional" frugal:"4,optional,string" json:"content,omitempty"`
+	CreatedAt *string  `thrift:"created_at,5,optional" frugal:"5,optional,string" json:"created_at,omitempty"`
+}
+
+func NewReviewInfo() *ReviewInfo {
+	return &ReviewInfo{}
+}
+
+func (p *ReviewInfo) InitDefault() {
+}
+
+var ReviewInfo_UserId_DEFAULT int64
+
+func (p *ReviewInfo) GetUserId() (v int64) {
+	if !p.IsSetUserId() {
+		return ReviewInfo_UserId_DEFAULT
+	}
+	return *p.UserId
+}
+
+var ReviewInfo_UserName_DEFAULT string
+
+func (p *ReviewInfo) GetUserName() (v string) {
+	if !p.IsSetUserName() {
+		return ReviewInfo_UserName_DEFAULT
+	}
+	return *p.UserName
+}
+
+var ReviewInfo_Rating_DEFAULT float64
+
+func (p *ReviewInfo) GetRating() (v float64) {
+	if !p.IsSetRating() {
+		return ReviewInfo_Rating_DEFAULT
+	}
+	return *p.Rating
+}
+
+var ReviewInfo_Content_DEFAULT string
+
+func (p *ReviewInfo) GetContent() (v string) {
+	if !p.IsSetContent() {
+		return ReviewInfo_Content_DEFAULT
+	}
+	return *p.Content
+}
+
+var ReviewInfo_CreatedAt_DEFAULT string
+
+func (p *ReviewInfo) GetCreatedAt() (v string) {
+	if !p.IsSetCreatedAt() {
+		return ReviewInfo_CreatedAt_DEFAULT
+	}
+	return *p.CreatedAt
+}
+func (p *ReviewInfo) SetUserId(val *int64) {
+	p.UserId = val
+}
+func (p *ReviewInfo) SetUserName(val *string) {
+	p.UserName = val
+}
+func (p *ReviewInfo) SetRating(val *float64) {
+	p.Rating = val
+}
+func (p *ReviewInfo) SetContent(val *string) {
+	p.Content = val
+}
+func (p *ReviewInfo) SetCreatedAt(val *string) {
+	p.CreatedAt = val
+}
+
+func (p *ReviewInfo) IsSetUserId() bool {
+	return p.UserId != nil
+}
+
+func (p *ReviewInfo) IsSetUserName() bool {
+	return p.UserName != nil
+}
+
+func (p *ReviewInfo) IsSetRating() bool {
+	return p.Rating != nil
+}
+
+func (p *ReviewInfo) IsSetContent() bool {
+	return p.Content != nil
+}
+
+func (p *ReviewInfo) IsSetCreatedAt() bool {
+	return p.CreatedAt != nil
+}
+
+func (p *ReviewInfo) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ReviewInfo(%+v)", *p)
+}
+
+var fieldIDToName_ReviewInfo = map[int16]string{
+	1: "user_id",
+	2: "user_name",
+	3: "rating",
+	4: "content",
+	5: "created_at",
+}
+
+type SpotDetail struct {
+	SpotId       int64             `thrift:"spot_id,1" frugal:"1,default,i64" json:"spot_id"`
+	SpotName     string            `thrift:"spot_name,2" frugal:"2,default,string" json:"spot_name"`
+	SpotDesc     *string           `thrift:"spot_desc,3,optional" frugal:"3,optional,string" json:"spot_desc,omitempty"`
+	Province     string            `thrift:"province,4" frugal:"4,default,string" json:"province"`
+	City         string            `thrift:"city,5" frugal:"5,default,string" json:"city"`
+	Address      string            `thrift:"address,6" frugal:"6,default,string" json:"address"`
+	CoverImg     string            `thrift:"cover_img,7" frugal:"7,default,string" json:"cover_img"`
+	OpenTime     string            `thrift:"open_time,8" frugal:"8,default,string" json:"open_time"`
+	ContactPhone *string           `thrift:"contact_phone,9,optional" frugal:"9,optional,string" json:"contact_phone,omitempty"`
+	Sales        *int64            `thrift:"sales,10,optional" frugal:"10,optional,i64" json:"sales,omitempty"`
+	Rating       *float64          `thrift:"rating,11,optional" frugal:"11,optional,double" json:"rating,omitempty"`
+	Tags         []string          `thrift:"tags,12,optional" frugal:"12,optional,list<string>" json:"tags,omitempty"`
+	TicketTypes  []*TicketTypeInfo `thrift:"ticket_types,13" frugal:"13,default,list<TicketTypeInfo>" json:"ticket_types"`
+	Reviews      []*ReviewInfo     `thrift:"reviews,14,optional" frugal:"14,optional,list<ReviewInfo>" json:"reviews,omitempty"`
+}
+
+func NewSpotDetail() *SpotDetail {
+	return &SpotDetail{}
+}
+
+func (p *SpotDetail) InitDefault() {
+}
+
+func (p *SpotDetail) GetSpotId() (v int64) {
+	return p.SpotId
+}
+
+func (p *SpotDetail) GetSpotName() (v string) {
+	return p.SpotName
+}
+
+var SpotDetail_SpotDesc_DEFAULT string
+
+func (p *SpotDetail) GetSpotDesc() (v string) {
+	if !p.IsSetSpotDesc() {
+		return SpotDetail_SpotDesc_DEFAULT
+	}
+	return *p.SpotDesc
+}
+
+func (p *SpotDetail) GetProvince() (v string) {
+	return p.Province
+}
+
+func (p *SpotDetail) GetCity() (v string) {
+	return p.City
+}
+
+func (p *SpotDetail) GetAddress() (v string) {
+	return p.Address
+}
+
+func (p *SpotDetail) GetCoverImg() (v string) {
+	return p.CoverImg
+}
+
+func (p *SpotDetail) GetOpenTime() (v string) {
+	return p.OpenTime
+}
+
+var SpotDetail_ContactPhone_DEFAULT string
+
+func (p *SpotDetail) GetContactPhone() (v string) {
+	if !p.IsSetContactPhone() {
+		return SpotDetail_ContactPhone_DEFAULT
+	}
+	return *p.ContactPhone
+}
+
+var SpotDetail_Sales_DEFAULT int64
+
+func (p *SpotDetail) GetSales() (v int64) {
+	if !p.IsSetSales() {
+		return SpotDetail_Sales_DEFAULT
+	}
+	return *p.Sales
+}
+
+var SpotDetail_Rating_DEFAULT float64
+
+func (p *SpotDetail) GetRating() (v float64) {
+	if !p.IsSetRating() {
+		return SpotDetail_Rating_DEFAULT
+	}
+	return *p.Rating
+}
+
+var SpotDetail_Tags_DEFAULT []string
+
+func (p *SpotDetail) GetTags() (v []string) {
+	if !p.IsSetTags() {
+		return SpotDetail_Tags_DEFAULT
+	}
+	return p.Tags
+}
+
+func (p *SpotDetail) GetTicketTypes() (v []*TicketTypeInfo) {
+	return p.TicketTypes
+}
+
+var SpotDetail_Reviews_DEFAULT []*ReviewInfo
+
+func (p *SpotDetail) GetReviews() (v []*ReviewInfo) {
+	if !p.IsSetReviews() {
+		return SpotDetail_Reviews_DEFAULT
+	}
+	return p.Reviews
+}
+func (p *SpotDetail) SetSpotId(val int64) {
+	p.SpotId = val
+}
+func (p *SpotDetail) SetSpotName(val string) {
+	p.SpotName = val
+}
+func (p *SpotDetail) SetSpotDesc(val *string) {
+	p.SpotDesc = val
+}
+func (p *SpotDetail) SetProvince(val string) {
+	p.Province = val
+}
+func (p *SpotDetail) SetCity(val string) {
+	p.City = val
+}
+func (p *SpotDetail) SetAddress(val string) {
+	p.Address = val
+}
+func (p *SpotDetail) SetCoverImg(val string) {
+	p.CoverImg = val
+}
+func (p *SpotDetail) SetOpenTime(val string) {
+	p.OpenTime = val
+}
+func (p *SpotDetail) SetContactPhone(val *string) {
+	p.ContactPhone = val
+}
+func (p *SpotDetail) SetSales(val *int64) {
+	p.Sales = val
+}
+func (p *SpotDetail) SetRating(val *float64) {
+	p.Rating = val
+}
+func (p *SpotDetail) SetTags(val []string) {
+	p.Tags = val
+}
+func (p *SpotDetail) SetTicketTypes(val []*TicketTypeInfo) {
+	p.TicketTypes = val
+}
+func (p *SpotDetail) SetReviews(val []*ReviewInfo) {
+	p.Reviews = val
+}
+
+func (p *SpotDetail) IsSetSpotDesc() bool {
+	return p.SpotDesc != nil
+}
+
+func (p *SpotDetail) IsSetContactPhone() bool {
+	return p.ContactPhone != nil
+}
+
+func (p *SpotDetail) IsSetSales() bool {
+	return p.Sales != nil
+}
+
+func (p *SpotDetail) IsSetRating() bool {
+	return p.Rating != nil
+}
+
+func (p *SpotDetail) IsSetTags() bool {
+	return p.Tags != nil
+}
+
+func (p *SpotDetail) IsSetReviews() bool {
+	return p.Reviews != nil
+}
+
+func (p *SpotDetail) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("SpotDetail(%+v)", *p)
+}
+
+var fieldIDToName_SpotDetail = map[int16]string{
+	1:  "spot_id",
+	2:  "spot_name",
+	3:  "spot_desc",
+	4:  "province",
+	5:  "city",
+	6:  "address",
+	7:  "cover_img",
+	8:  "open_time",
+	9:  "contact_phone",
+	10: "sales",
+	11: "rating",
+	12: "tags",
+	13: "ticket_types",
+	14: "reviews",
+}
+
+type SpotDetailReq struct {
+	SpotId int64 `thrift:"spot_id,1" frugal:"1,default,i64" json:"spot_id"`
+}
+
+func NewSpotDetailReq() *SpotDetailReq {
+	return &SpotDetailReq{}
+}
+
+func (p *SpotDetailReq) InitDefault() {
+}
+
+func (p *SpotDetailReq) GetSpotId() (v int64) {
+	return p.SpotId
+}
+func (p *SpotDetailReq) SetSpotId(val int64) {
+	p.SpotId = val
+}
+
+func (p *SpotDetailReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("SpotDetailReq(%+v)", *p)
+}
+
+var fieldIDToName_SpotDetailReq = map[int16]string{
+	1: "spot_id",
+}
+
+type SpotDetailResp struct {
+	Base *BaseResp   `thrift:"base,1" frugal:"1,default,BaseResp" json:"base"`
+	Data *SpotDetail `thrift:"data,2,optional" frugal:"2,optional,SpotDetail" json:"data,omitempty"`
+}
+
+func NewSpotDetailResp() *SpotDetailResp {
+	return &SpotDetailResp{}
+}
+
+func (p *SpotDetailResp) InitDefault() {
+}
+
+var SpotDetailResp_Base_DEFAULT *BaseResp
+
+func (p *SpotDetailResp) GetBase() (v *BaseResp) {
+	if !p.IsSetBase() {
+		return SpotDetailResp_Base_DEFAULT
+	}
+	return p.Base
+}
+
+var SpotDetailResp_Data_DEFAULT *SpotDetail
+
+func (p *SpotDetailResp) GetData() (v *SpotDetail) {
+	if !p.IsSetData() {
+		return SpotDetailResp_Data_DEFAULT
+	}
+	return p.Data
+}
+func (p *SpotDetailResp) SetBase(val *BaseResp) {
+	p.Base = val
+}
+func (p *SpotDetailResp) SetData(val *SpotDetail) {
+	p.Data = val
+}
+
+func (p *SpotDetailResp) IsSetBase() bool {
+	return p.Base != nil
+}
+
+func (p *SpotDetailResp) IsSetData() bool {
+	return p.Data != nil
+}
+
+func (p *SpotDetailResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("SpotDetailResp(%+v)", *p)
+}
+
+var fieldIDToName_SpotDetailResp = map[int16]string{
+	1: "base",
+	2: "data",
+}
+
 type CouponService interface {
 	Test(ctx context.Context, req *EmptyReq) (r *BaseResp, err error)
+
+	SpotList(ctx context.Context, req *SpotListReq) (r *SpotListResp, err error)
+
+	SpotDetail(ctx context.Context, req *SpotDetailReq) (r *SpotDetailResp, err error)
 }
 
 type CouponServiceTestArgs struct {
@@ -151,5 +1104,157 @@ func (p *CouponServiceTestResult) String() string {
 }
 
 var fieldIDToName_CouponServiceTestResult = map[int16]string{
+	0: "success",
+}
+
+type CouponServiceSpotListArgs struct {
+	Req *SpotListReq `thrift:"req,1" frugal:"1,default,SpotListReq" json:"req"`
+}
+
+func NewCouponServiceSpotListArgs() *CouponServiceSpotListArgs {
+	return &CouponServiceSpotListArgs{}
+}
+
+func (p *CouponServiceSpotListArgs) InitDefault() {
+}
+
+var CouponServiceSpotListArgs_Req_DEFAULT *SpotListReq
+
+func (p *CouponServiceSpotListArgs) GetReq() (v *SpotListReq) {
+	if !p.IsSetReq() {
+		return CouponServiceSpotListArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *CouponServiceSpotListArgs) SetReq(val *SpotListReq) {
+	p.Req = val
+}
+
+func (p *CouponServiceSpotListArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *CouponServiceSpotListArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("CouponServiceSpotListArgs(%+v)", *p)
+}
+
+var fieldIDToName_CouponServiceSpotListArgs = map[int16]string{
+	1: "req",
+}
+
+type CouponServiceSpotListResult struct {
+	Success *SpotListResp `thrift:"success,0,optional" frugal:"0,optional,SpotListResp" json:"success,omitempty"`
+}
+
+func NewCouponServiceSpotListResult() *CouponServiceSpotListResult {
+	return &CouponServiceSpotListResult{}
+}
+
+func (p *CouponServiceSpotListResult) InitDefault() {
+}
+
+var CouponServiceSpotListResult_Success_DEFAULT *SpotListResp
+
+func (p *CouponServiceSpotListResult) GetSuccess() (v *SpotListResp) {
+	if !p.IsSetSuccess() {
+		return CouponServiceSpotListResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *CouponServiceSpotListResult) SetSuccess(x interface{}) {
+	p.Success = x.(*SpotListResp)
+}
+
+func (p *CouponServiceSpotListResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *CouponServiceSpotListResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("CouponServiceSpotListResult(%+v)", *p)
+}
+
+var fieldIDToName_CouponServiceSpotListResult = map[int16]string{
+	0: "success",
+}
+
+type CouponServiceSpotDetailArgs struct {
+	Req *SpotDetailReq `thrift:"req,1" frugal:"1,default,SpotDetailReq" json:"req"`
+}
+
+func NewCouponServiceSpotDetailArgs() *CouponServiceSpotDetailArgs {
+	return &CouponServiceSpotDetailArgs{}
+}
+
+func (p *CouponServiceSpotDetailArgs) InitDefault() {
+}
+
+var CouponServiceSpotDetailArgs_Req_DEFAULT *SpotDetailReq
+
+func (p *CouponServiceSpotDetailArgs) GetReq() (v *SpotDetailReq) {
+	if !p.IsSetReq() {
+		return CouponServiceSpotDetailArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *CouponServiceSpotDetailArgs) SetReq(val *SpotDetailReq) {
+	p.Req = val
+}
+
+func (p *CouponServiceSpotDetailArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *CouponServiceSpotDetailArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("CouponServiceSpotDetailArgs(%+v)", *p)
+}
+
+var fieldIDToName_CouponServiceSpotDetailArgs = map[int16]string{
+	1: "req",
+}
+
+type CouponServiceSpotDetailResult struct {
+	Success *SpotDetailResp `thrift:"success,0,optional" frugal:"0,optional,SpotDetailResp" json:"success,omitempty"`
+}
+
+func NewCouponServiceSpotDetailResult() *CouponServiceSpotDetailResult {
+	return &CouponServiceSpotDetailResult{}
+}
+
+func (p *CouponServiceSpotDetailResult) InitDefault() {
+}
+
+var CouponServiceSpotDetailResult_Success_DEFAULT *SpotDetailResp
+
+func (p *CouponServiceSpotDetailResult) GetSuccess() (v *SpotDetailResp) {
+	if !p.IsSetSuccess() {
+		return CouponServiceSpotDetailResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *CouponServiceSpotDetailResult) SetSuccess(x interface{}) {
+	p.Success = x.(*SpotDetailResp)
+}
+
+func (p *CouponServiceSpotDetailResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *CouponServiceSpotDetailResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("CouponServiceSpotDetailResult(%+v)", *p)
+}
+
+var fieldIDToName_CouponServiceSpotDetailResult = map[int16]string{
 	0: "success",
 }

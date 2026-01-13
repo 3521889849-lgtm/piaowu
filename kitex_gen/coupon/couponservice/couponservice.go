@@ -20,6 +20,20 @@ var serviceMethods = map[string]kitex.MethodInfo{
 		false,
 		kitex.WithStreamingMode(kitex.StreamingNone),
 	),
+	"SpotList": kitex.NewMethodInfo(
+		spotListHandler,
+		newCouponServiceSpotListArgs,
+		newCouponServiceSpotListResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
+	"SpotDetail": kitex.NewMethodInfo(
+		spotDetailHandler,
+		newCouponServiceSpotDetailArgs,
+		newCouponServiceSpotDetailResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
 }
 
 var (
@@ -104,6 +118,42 @@ func newCouponServiceTestResult() interface{} {
 	return coupon.NewCouponServiceTestResult()
 }
 
+func spotListHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*coupon.CouponServiceSpotListArgs)
+	realResult := result.(*coupon.CouponServiceSpotListResult)
+	success, err := handler.(coupon.CouponService).SpotList(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newCouponServiceSpotListArgs() interface{} {
+	return coupon.NewCouponServiceSpotListArgs()
+}
+
+func newCouponServiceSpotListResult() interface{} {
+	return coupon.NewCouponServiceSpotListResult()
+}
+
+func spotDetailHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*coupon.CouponServiceSpotDetailArgs)
+	realResult := result.(*coupon.CouponServiceSpotDetailResult)
+	success, err := handler.(coupon.CouponService).SpotDetail(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newCouponServiceSpotDetailArgs() interface{} {
+	return coupon.NewCouponServiceSpotDetailArgs()
+}
+
+func newCouponServiceSpotDetailResult() interface{} {
+	return coupon.NewCouponServiceSpotDetailResult()
+}
+
 type kClient struct {
 	c client.Client
 }
@@ -119,6 +169,26 @@ func (p *kClient) Test(ctx context.Context, req *coupon.EmptyReq) (r *coupon.Bas
 	_args.Req = req
 	var _result coupon.CouponServiceTestResult
 	if err = p.c.Call(ctx, "Test", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) SpotList(ctx context.Context, req *coupon.SpotListReq) (r *coupon.SpotListResp, err error) {
+	var _args coupon.CouponServiceSpotListArgs
+	_args.Req = req
+	var _result coupon.CouponServiceSpotListResult
+	if err = p.c.Call(ctx, "SpotList", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) SpotDetail(ctx context.Context, req *coupon.SpotDetailReq) (r *coupon.SpotDetailResp, err error) {
+	var _args coupon.CouponServiceSpotDetailArgs
+	_args.Req = req
+	var _result coupon.CouponServiceSpotDetailResult
+	if err = p.c.Call(ctx, "SpotDetail", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil

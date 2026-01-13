@@ -12,6 +12,8 @@ import (
 // Client is designed to provide IDL-compatible methods with call-option parameter for kitex framework.
 type Client interface {
 	Test(ctx context.Context, req *coupon.EmptyReq, callOptions ...callopt.Option) (r *coupon.BaseResp, err error)
+	SpotList(ctx context.Context, req *coupon.SpotListReq, callOptions ...callopt.Option) (r *coupon.SpotListResp, err error)
+	SpotDetail(ctx context.Context, req *coupon.SpotDetailReq, callOptions ...callopt.Option) (r *coupon.SpotDetailResp, err error)
 }
 
 // NewClient creates a client for the service defined in IDL.
@@ -46,4 +48,14 @@ type kCouponServiceClient struct {
 func (p *kCouponServiceClient) Test(ctx context.Context, req *coupon.EmptyReq, callOptions ...callopt.Option) (r *coupon.BaseResp, err error) {
 	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
 	return p.kClient.Test(ctx, req)
+}
+
+func (p *kCouponServiceClient) SpotList(ctx context.Context, req *coupon.SpotListReq, callOptions ...callopt.Option) (r *coupon.SpotListResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.SpotList(ctx, req)
+}
+
+func (p *kCouponServiceClient) SpotDetail(ctx context.Context, req *coupon.SpotDetailReq, callOptions ...callopt.Option) (r *coupon.SpotDetailResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.SpotDetail(ctx, req)
 }
