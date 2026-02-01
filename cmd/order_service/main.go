@@ -12,10 +12,12 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/pkg/utils"
 	"github.com/cloudwego/kitex/server"
+	ktracer "github.com/kitex-contrib/tracer-opentracing"
 )
 
 func main() {
-	initpkg.Init()
+	shutdown := initpkg.Init("order_service")
+	defer shutdown()
 
 	stop := make(chan struct{})
 	job.StartOrderCleanup(stop)
@@ -27,6 +29,7 @@ func main() {
 		orderapi.NewOrderServiceImpl(),
 		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "order_service"}),
 		server.WithServiceAddr(utils.NewNetAddr("tcp", listenAddr)),
+		server.WithSuite(ktracer.NewDefaultServerSuite()),
 	)
 
 	log.Println("order_service started")

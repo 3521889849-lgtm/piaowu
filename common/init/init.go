@@ -14,6 +14,7 @@ package init
 import (
 	"example_shop/common/config"
 	"example_shop/common/db"
+	"example_shop/common/trace"
 	"log"
 )
 
@@ -26,7 +27,7 @@ import (
 // 
 // 注意：如果任何一个步骤失败，程序会退出（log.Fatalf）
 // 这样可以在启动时就发现问题，而不是运行时才暴露
-func Init() {
+func Init(serviceName string) (shutdown func()) {
 	// 1. 初始化配置（加载config.yaml文件）
 	if err := config.ViperInit(); err != nil {
 		log.Fatalf("配置初始化失败: %v", err)
@@ -43,7 +44,18 @@ func Init() {
 	if err := db.RedisInit(); err != nil {
 		log.Printf("Redis连接初始化失败: %v", err)
 	}
+
+	closer, err := trace.InitJaeger(serviceName)
+	if err != nil {
+		log.Fatalf("Tracing初始化失败: %v", err)
+	}
+	shutdown = func() {
+		if closer != nil {
+			_ = closer.Close()
+		}
+	}
 	
 	// 所有初始化完成
 	log.Println("所有初始化完成，服务就绪")
+	return shutdown
 }

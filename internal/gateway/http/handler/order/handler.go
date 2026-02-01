@@ -191,7 +191,7 @@ func (h *Handler) PayOrder(ctx context.Context, c *app.RequestContext) {
 		orderResp, err := h.OrderClient.GetOrder(ctx, &kitexorder.GetOrderReq{UserId: userID, OrderId: req.OrderID})
 		if err == nil && orderResp != nil && orderResp.BaseResp != nil && orderResp.BaseResp.Code == 200 && orderResp.Order != nil {
 			subject := "车票订单-" + req.OrderID
-			payURL, err := alipay.WapPayURL(payNo, subject, orderResp.Order.TotalAmount)
+			payURL, err := alipay.PagePayURL(payNo, subject, orderResp.Order.TotalAmount)
 			if err == nil {
 				resp.PayURL = payURL
 

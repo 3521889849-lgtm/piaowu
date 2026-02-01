@@ -27,6 +27,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/pkg/utils"
 	"github.com/cloudwego/kitex/server"
+	ktracer "github.com/kitex-contrib/tracer-opentracing"
 )
 
 // main函数：用户服务的入口函数
@@ -39,7 +40,8 @@ import (
 func main() {
 	// 初始化配置和数据库
 	// 包括：配置加载、MySQL连接、Redis连接、数据库表迁移
-	initpkg.Init()
+	shutdown := initpkg.Init("user_service")
+	defer shutdown()
 
 	listenAddr := fmt.Sprintf("%s:%d", config.Cfg.Server.UserService.Host, config.Cfg.Server.UserService.Port)
 
@@ -53,6 +55,7 @@ func main() {
 			ServiceName: "user_service",
 		}),
 		server.WithServiceAddr(utils.NewNetAddr("tcp", listenAddr)),
+		server.WithSuite(ktracer.NewDefaultServerSuite()),
 	)
 
 	// 启动RPC服务

@@ -275,11 +275,14 @@ func buildOrderIdempotentKey(req *kitexuser.CreateOrderReq) string {
 
 func loadIdempotentOrder(idemKey string) (*kitexuser.CreateOrderResp, error) {
 	var o model2.OrderInfo
-	if err := db.ReadDB().Where("idempotent_key = ?", idemKey).First(&o).Error; err != nil {
+	if err := db.ReadDB().Unscoped().Where("idempotent_key = ?", idemKey).First(&o).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return &kitexuser.CreateOrderResp{BaseResp: baseResp(409, "重复请求但未找到原订单")}, nil
 		}
 		return &kitexuser.CreateOrderResp{BaseResp: baseResp(500, "查询原订单失败: "+err.Error())}, nil
+	}
+	if o.DeletedAt.Valid {
+		return &kitexuser.CreateOrderResp{BaseResp: baseResp(409, "重复请求命中已删除订单，请更换乘客/席别/车次或联系管理员清理幂等键")}, nil
 	}
 	var rel []model2.OrderSeatRelation
 	_ = db.ReadDB().Where("order_id = ?", o.ID).Find(&rel).Error

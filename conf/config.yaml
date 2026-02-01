@@ -4,16 +4,6 @@ Mysql:
   User: root
   Password: 4ay1nkal3u8ed77y
   Database: fxd
-  LogLevel: warn
-  AutoMigrate: true
-  StartupFixes: false
-  ReadReplica:
-    Enabled: false
-    Host: ""
-    Port: 3306
-    User: ""
-    Password: ""
-    Database: ""
 
 Redis:
   Host: 14.103.201.153
@@ -23,27 +13,46 @@ Redis:
 
 Server:
   Gateway:
-    Host: 0.0.0.0
+    Host: "0.0.0.0"
     Port: 5200
   UserService:
-    Host: 127.0.0.1
+    Host: "127.0.0.1"
     Port: 8888
   TicketService:
-    Host: 127.0.0.1
+    Host: "127.0.0.1"
     Port: 8889
   OrderService:
-    Host: 127.0.0.1
+    Host: "127.0.0.1"
     Port: 8890
 
 JWT:
-  Secret: "ticket-system-secret-key-2024-change-in-production" # JWT签名密钥（生产环境必须修改）
-  Expire: 7200  # Token过期时间（秒），7200=2小时
+  Secret: "please-change-me-to-a-random-string"
+  Expire: 7200
+
+Coupon:
+  AntiBrushLimit: 0
+  AntiBrushExpire: 0
+  AesKey: ""
 
 RealName:
-  SecretID: "JsrWZuM3qoqmdlPt"
-  SecretKey: "z54XoZbdH9suvMV7XkJzGTB7yQi4XNC8"
-  DebugReturn: true
+  SecretID: ""
+  SecretKey: ""
+  DebugReturn: false
 
 AliPay:
-  AppId: "9021000150671916"
-  PrivateKey: "MIIEpAIBAAKCAQEAjnoeuqYbFPfgc97QgyCbmPSryyLxDbuyR6TiLp3jz/naAOxIvTvRhnKxym2PhcIO5MN2/YVPdEQYCLiv1ttrmeSa9R1qVf48hMfPtprcqN9IUkZUgNMO/56ODm7pNFg6d93Qjqb8lwwQSZK3dO/lhQNJVpfwJiBgP+9e6pkbsvkpMi7YSkYdPgR3GLZ+/SKttPHE4z+h6vmuTUFM5I/duK7GKn1hhADfunuUSedhdcZHojHei9T4tBWQRNKK2YvsUG1OPDcRV0xik3zRGGRrCnhpZAdSMgpYG9XX302cCO3jHZoUWXguv6nKGzWRWlUkyh1mEgh7M56WbVwTY9XG0QIDAQABAoIBAE1FvlTMsfN1XK57MetsS/dw+5t4n/Qq0E47BtDxoRSzFaFahTjcsI6Stgpr0WNiFGHOAUMOgkE0jTRttjB5YKpeagx2n61z7a62D9mhs/uC3d6BdmNIFOJeQ/1f+esBzvQjwXEc7/GcAVll0UoCsiCp36SvUvfap1kFohzqXTN7S4BmQZeZtSCLw+3UnBxAE9k5b/JzY7U/GYs8Cvs2JnoCS5bRSocdy3hW2X48cAv8IwffUAGuPzUxy1wofP+xCfOHzEwItrJSmFeZVYLqwdGk6NFPKm3XJSqlBtLvz2wh5pIvgR5IS0821S4Ezf7fNAxiCxkSKJq6BJlV/NKGvoECgYEA6gRTOBOxT/4Yy+MHmojHY0/2zN594eqEeqHYYkPzmx0TWKUdA3DSqHhqHclx/LrYIVv6pkMPpfYsKK00vmMldzG9skvYwvzDSY9167oYaiP5Uois13tsrG9l0BG5gkBD0eKBaucCpeOHo2Znd/1GWoAHtQ1/Twq53/1CD4dlXj0CgYEAm9xuFArTKzWoc//dB/EDa9yPCl72twI5SX2BTVVo6OTzQYzGK4pVb4Hkn1EcYomi2VMMPLa4S4PEaNEmWMNHGeBjNTwZ1dndFi02VkU7Fk2HI195KcfVIsIzoq60aGeutwcyGweQ8xzEJLZYs2jVCQKmuLdYs/1QlGsvdmdGSCUCgYEA5OOoFfBE/M22qS180Wy5QO0Eo2t3StHcFCpa//ogunXc51ZQI35lvTxR5qKTKDQEk9RoO9jZ5GT82ihXr2RAT+5J8at373fU9w0ntJIHsUFQaqaeEAF70MkAl1vOy5RaAV7/YHVlRKZgk7TkvRrwhjI116PFAqWmGmyXAaNXxa0CgYAeA/Ra/b6vCpVXSYX6eoqrIf2WBLXEhrQbmATnrLQYbcb+76pWRjyvzbcGi2tI+rKW4axwoMubF1Qiz2xwGaM+s3zHirx694rhM3HMaWa4o9OLl15REn/UQswI31Y06Qq3irY2iF18xCRt4YPxgRXNt2n+FqkJeJYlDwND7R2W1QKBgQCJuIEzE3sBJjjwz/m9nCVqCvZfEJMqyERgCpyYvcc5Kuf2H8karNaWdIb6qjZQemiRgfO7dFmjAK5H2O27JdR/1EcNHT3EmSYEd3S0cTJVcnBIIftJyafv7W6Kx2ch1XclhHs7qsYcwKWLhdVFQ9vNXaiV0qIDZ7DZeMGeIzZmeg=="
+  AppId: ""
+  PrivateKey: ""
+  AliPublicKey: ""
+  NotifyURL: ""
+  ReturnURL: ""
+  IsProduction: false
+
+Tracing:
+  Enabled: true
+  Jaeger:
+    CollectorEndpoint: "http://14.103.201.153:14268/api/traces"
+    AgentHost: ""
+    AgentPort: 6831
+    SamplerType: "const"
+    SamplerParam: 1
+    LogSpans: false

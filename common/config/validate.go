@@ -20,6 +20,15 @@ func ValidateAndNormalize() error {
 	if Cfg.JWT.Expire == 0 {
 		Cfg.JWT.Expire = 7200
 	}
+	if Cfg.Tracing.Jaeger.AgentPort == 0 {
+		Cfg.Tracing.Jaeger.AgentPort = 6831
+	}
+	if strings.TrimSpace(Cfg.Tracing.Jaeger.SamplerType) == "" {
+		Cfg.Tracing.Jaeger.SamplerType = "const"
+	}
+	if Cfg.Tracing.Jaeger.SamplerParam == 0 {
+		Cfg.Tracing.Jaeger.SamplerParam = 1
+	}
 
 	if strings.TrimSpace(Cfg.Mysql.Host) == "" || strings.TrimSpace(Cfg.Mysql.User) == "" || strings.TrimSpace(Cfg.Mysql.Database) == "" {
 		return fmt.Errorf("Mysql配置缺失(Host/User/Database)")

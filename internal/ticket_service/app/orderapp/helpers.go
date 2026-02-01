@@ -6,9 +6,11 @@ import (
 	"example_shop/common/db"
 	model2 "example_shop/internal/model"
 	kitexuser "example_shop/kitex_gen/user"
+	"errors"
 	"strings"
 	"time"
 
+	mysqlerr "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -32,8 +34,12 @@ func isDuplicateKeyError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "Duplicate entry") || strings.Contains(msg, "duplicate")
+	var me *mysqlerr.MySQLError
+	if errors.As(err, &me) && me != nil && me.Number == 1062 {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate entry") || strings.Contains(msg, "duplicate")
 }
 
 // writeOrderAuditLog 写入订单审计日志。
@@ -71,4 +77,3 @@ func writeOrderAuditLog(tx *gorm.DB, orderID, operateType, userID, before, after
 func readDB() *gorm.DB {
 	return db.ReadDB()
 }
-

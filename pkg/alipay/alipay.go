@@ -29,9 +29,16 @@ var (
 // gatewayURL 根据配置返回支付宝网关地址。
 func gatewayURL() string {
 	if config.Cfg.AliPay.IsProduction {
-		return gatewayProd
+		return cleanConfigString(gatewayProd)
 	}
-	return gatewaySandbox
+	return cleanConfigString(gatewaySandbox)
+}
+
+func cleanConfigString(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.Trim(s, "`")
+	s = strings.Trim(s, "\"")
+	return strings.TrimSpace(s)
 }
 
 // WapPayURL 发起“手机网站支付”（alipay.trade.wap.pay），返回支付宝收银台 URL。
@@ -55,24 +62,30 @@ func WapPayURL(outTradeNo, subject string, totalAmount float64) (string, error) 
 	}
 
 	cfg := config.Cfg.AliPay
-	appID := strings.TrimSpace(cfg.AppId)
+	appID := cleanConfigString(cfg.AppId)
 	if appID == "" {
 		return "", fmt.Errorf("AliPay.AppId缺失")
 	}
-	privateKeyPEM := normalizeRSAKey(cfg.PrivateKey, "RSA PRIVATE KEY")
+	privateKeyPEM := normalizeRSAKey(cleanConfigString(cfg.PrivateKey), "RSA PRIVATE KEY")
 	priv, err := parseRSAPrivateKey(privateKeyPEM)
 	if err != nil {
 		return "", fmt.Errorf("解析AliPay.PrivateKey失败: %w", err)
 	}
 
 	// 1) 生成 notify_url / return_url
-	notifyURL := strings.TrimSpace(cfg.NotifyURL)
+	notifyURL := cleanConfigString(cfg.NotifyURL)
 	if notifyURL == "" && config.Cfg.Server.Gateway.Port != 0 {
-		notifyURL = fmt.Sprintf("http://127.0.0.1:%d/api/v1/pay/callback", config.Cfg.Server.Gateway.Port)
+		host := strings.TrimSpace(config.Cfg.Server.Gateway.Host)
+		if host == "127.0.0.1" || strings.EqualFold(host, "localhost") {
+			notifyURL = fmt.Sprintf("http://%s:%d/api/v1/pay/callback", host, config.Cfg.Server.Gateway.Port)
+		}
 	}
-	returnURL := strings.TrimSpace(cfg.ReturnURL)
+	returnURL := cleanConfigString(cfg.ReturnURL)
 	if returnURL == "" && config.Cfg.Server.Gateway.Port != 0 {
-		returnURL = fmt.Sprintf("http://127.0.0.1:%d/", config.Cfg.Server.Gateway.Port)
+		host := strings.TrimSpace(config.Cfg.Server.Gateway.Host)
+		if host == "127.0.0.1" || strings.EqualFold(host, "localhost") {
+			returnURL = fmt.Sprintf("http://%s:%d/", host, config.Cfg.Server.Gateway.Port)
+		}
 	}
 
 	// 2) 构造 biz_content（JSON 字符串，属于支付宝签名参数的一部分）
@@ -118,13 +131,89 @@ func WapPayURL(outTradeNo, subject string, totalAmount float64) (string, error) 
 	return gatewayURL() + "?" + v.Encode(), nil
 }
 
+func PagePayURL(outTradeNo, subject string, totalAmount float64) (string, error) {
+	outTradeNo = strings.TrimSpace(outTradeNo)
+	subject = strings.TrimSpace(subject)
+	if outTradeNo == "" || subject == "" {
+		return "", fmt.Errorf("out_trade_no/subject不能为空")
+	}
+	if totalAmount <= 0 {
+		return "", fmt.Errorf("total_amount不合法")
+	}
+
+	cfg := config.Cfg.AliPay
+	appID := cleanConfigString(cfg.AppId)
+	if appID == "" {
+		return "", fmt.Errorf("AliPay.AppId缺失")
+	}
+	privateKeyPEM := normalizeRSAKey(cleanConfigString(cfg.PrivateKey), "RSA PRIVATE KEY")
+	priv, err := parseRSAPrivateKey(privateKeyPEM)
+	if err != nil {
+		return "", fmt.Errorf("解析AliPay.PrivateKey失败: %w", err)
+	}
+
+	notifyURL := cleanConfigString(cfg.NotifyURL)
+	if notifyURL == "" && config.Cfg.Server.Gateway.Port != 0 {
+		host := strings.TrimSpace(config.Cfg.Server.Gateway.Host)
+		if host == "127.0.0.1" || strings.EqualFold(host, "localhost") {
+			notifyURL = fmt.Sprintf("http://%s:%d/api/v1/pay/callback", host, config.Cfg.Server.Gateway.Port)
+		}
+	}
+	returnURL := cleanConfigString(cfg.ReturnURL)
+	if returnURL == "" && config.Cfg.Server.Gateway.Port != 0 {
+		host := strings.TrimSpace(config.Cfg.Server.Gateway.Host)
+		if host == "127.0.0.1" || strings.EqualFold(host, "localhost") {
+			returnURL = fmt.Sprintf("http://%s:%d/", host, config.Cfg.Server.Gateway.Port)
+		}
+	}
+
+	bizContentBytes, err := json.Marshal(map[string]string{
+		"subject":      subject,
+		"out_trade_no": outTradeNo,
+		"total_amount": fmt.Sprintf("%.2f", totalAmount),
+		"product_code": "FAST_INSTANT_TRADE_PAY",
+	})
+	if err != nil {
+		return "", fmt.Errorf("构造biz_content失败: %w", err)
+	}
+
+	params := map[string]string{
+		"app_id":      appID,
+		"method":      "alipay.trade.page.pay",
+		"format":      "JSON",
+		"charset":     "utf-8",
+		"sign_type":   "RSA2",
+		"timestamp":   time.Now().Format("2006-01-02 15:04:05"),
+		"version":     "1.0",
+		"biz_content": string(bizContentBytes),
+	}
+	if notifyURL != "" {
+		params["notify_url"] = notifyURL
+	}
+	if returnURL != "" {
+		params["return_url"] = returnURL
+	}
+
+	sign, err := signRSA2(params, priv)
+	if err != nil {
+		return "", err
+	}
+
+	v := url.Values{}
+	for k, val := range params {
+		v.Set(k, val)
+	}
+	v.Set("sign", sign)
+	return gatewayURL() + "?" + v.Encode(), nil
+}
+
 // Verify 验证支付宝异步通知/同步回跳携带的签名。
 //
 // 规则：
 // - 优先用 conf/config.yaml 的 AliPay.AliPublicKey 做本地 RSA2(SHA256WithRSA) 验签（推荐）
 // - 若未配置 AliPublicKey，则回退走 SDK VerifySign（依赖 SDK 客户端内的 aliPublicKey）
 func Verify(values url.Values) error {
-	aliPublicKey := strings.TrimSpace(config.Cfg.AliPay.AliPublicKey)
+	aliPublicKey := cleanConfigString(config.Cfg.AliPay.AliPublicKey)
 	if aliPublicKey == "" {
 		return fmt.Errorf("AliPay.AliPublicKey缺失，无法验签")
 	}

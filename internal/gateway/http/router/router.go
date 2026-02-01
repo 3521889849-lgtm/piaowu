@@ -36,6 +36,7 @@ import (
 //   - /v1: API版本号，便于后续版本升级
 //   - /user: 用户相关接口组
 func RegisterRoutes(h *server.Hertz, app *handler.App) {
+	h.Use(middleware.Tracing())
 	h.Use(middleware.RateLimit(10))
 
 	h.GET("/", serveWeb("index.html", "text/html; charset=utf-8"))
@@ -93,6 +94,14 @@ func RegisterRoutes(h *server.Hertz, app *handler.App) {
 	authed.GET("/order/info", app.Order.GetOrder)
 	// GET /api/v1/order/list - 查询订单列表
 	authed.GET("/order/list", app.Order.ListOrders)
+
+	// 智能助手与知识库路由
+	// POST /api/v1/assistant/chat - 智能助手对话（支持规划与工具调用）
+	authed.POST("/assistant/chat", app.Assistant.Chat)
+	// POST /api/v1/assistant/kb/upsert - 知识库文档写入/更新（用于 RAG 召回）
+	authed.POST("/assistant/kb/upsert", app.Assistant.KBUpsert)
+	// POST /api/v1/assistant/kb/search - 知识库文档检索（测试召回效果）
+	authed.POST("/assistant/kb/search", app.Assistant.KBSearch)
 }
 
 var (

@@ -12,9 +12,11 @@
 package rpc
 
 import (
+	"example_shop/common/config"
 	"example_shop/kitex_gen/userapi/userservice"
 
 	kclient "github.com/cloudwego/kitex/client"
+	ktracer "github.com/kitex-contrib/tracer-opentracing"
 )
 
 // NewUserClient 创建User Service的RPC客户端
@@ -42,5 +44,9 @@ func NewUserClient(addr string) (userservice.Client, error) {
 	//   - WithResolver: 使用服务发现（Consul/Nacos）
 	//   - WithLoadBalancer: 负载均衡策略
 	//   - WithCircuitBreaker: 熔断器配置
-	return userservice.NewClient("user_service", kclient.WithHostPorts(addr))
+	opts := []kclient.Option{kclient.WithHostPorts(addr)}
+	if config.Cfg != nil && config.Cfg.Tracing.Enabled {
+		opts = append(opts, kclient.WithSuite(ktracer.NewDefaultClientSuite()))
+	}
+	return userservice.NewClient("user_service", opts...)
 }

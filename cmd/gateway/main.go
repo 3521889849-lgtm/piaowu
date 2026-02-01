@@ -39,7 +39,8 @@ import (
 // 5. 启动服务监听请求
 func main() {
 	// 初始化配置、MySQL、Redis（票务查询接口会直接访问缓存与数据库）
-	initpkg.Init()
+	shutdown := initpkg.Init("api_gateway")
+	defer shutdown()
 
 	// 2. 从配置文件读取服务地址（避免硬编码，提高灵活性）
 	// Gateway服务监听地址：接收客户端HTTP请求

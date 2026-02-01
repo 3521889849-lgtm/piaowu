@@ -11,10 +11,12 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/pkg/utils"
 	"github.com/cloudwego/kitex/server"
+	ktracer "github.com/kitex-contrib/tracer-opentracing"
 )
 
 func main() {
-	initpkg.Init()
+	shutdown := initpkg.Init("ticket_service")
+	defer shutdown()
 
 	listenAddr := fmt.Sprintf("%s:%d", config.Cfg.Server.TicketService.Host, config.Cfg.Server.TicketService.Port)
 
@@ -22,6 +24,7 @@ func main() {
 		ticketapi.NewTicketServiceImpl(),
 		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "ticket_service"}),
 		server.WithServiceAddr(utils.NewNetAddr("tcp", listenAddr)),
+		server.WithSuite(ktracer.NewDefaultServerSuite()),
 	)
 
 	log.Println("ticket_service started")

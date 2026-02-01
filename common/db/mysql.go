@@ -139,6 +139,7 @@ func MysqlInit() error {
 			&model.TrainInfo{},        // 车次表：存储车次基本信息
 			&model.SeatInfo{},         // 座位表：存储座位信息和状态
 			&model.TicketRuleConfig{}, // 购票规则配置表：存储购票规则和限购策略
+			&model.KnowledgeDoc{},
 
 			// ========== 依赖基础表的表 ==========
 			&model.TrainStationPass{},     // 车次途径站点表（依赖TrainInfo）
@@ -147,6 +148,7 @@ func MysqlInit() error {
 			&model.OrderSeatRelation{},    // 订单座位关联表（依赖OrderInfo/SeatInfo）
 			&model.OrderAuditLog{},        // 订单操作审计表（依赖OrderInfo）：记录订单操作日志
 			&model.TicketInventoryLog{},   // 余票变更日志表（依赖TrainInfo/SeatInfo）：记录库存变化
+			&model.KnowledgeDoc{},         //智能助手知识库文档表（用于RAG召回）
 		)
 		if err != nil {
 			return fmt.Errorf("数据库表迁移失败：%w", err)

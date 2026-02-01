@@ -22,6 +22,8 @@ type Config struct {
 	JWT    JWT    // JWT Token配置
 	RealName RealName // 实名认证配置
 	AliPay AliPay // 支付宝支付配置
+	Tracing Tracing // 链路追踪配置（Jaeger）
+	Assistant Assistant // 智能助手配置（LLM/RAG/NLU）
 }
 
 // Mysql MySQL数据库配置结构体
@@ -98,4 +100,36 @@ type AliPay struct {
 	NotifyURL    string
 	ReturnURL    string
 	IsProduction bool
+}
+
+type Tracing struct {
+	Enabled bool
+	Jaeger  Jaeger
+}
+
+type Jaeger struct {
+	CollectorEndpoint string
+	AgentHost         string
+	AgentPort         int
+	SamplerType       string
+	SamplerParam      float64
+	LogSpans          bool
+}
+
+type Assistant struct {
+	LLM LLM
+	RAG RAG
+}
+
+type LLM struct {
+	Provider string
+	BaseURL  string
+	APIKey   string
+	Model    string
+	TimeoutSeconds int
+}
+
+type RAG struct {
+	Enabled bool
+	TopK    int
 }

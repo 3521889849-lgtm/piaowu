@@ -28,8 +28,8 @@
       visibleTrainIds: [],
     },
     suggest: {
-      dep: { items: [], open: false, seq: 0 },
-      arr: { items: [], open: false, seq: 0 },
+      dep: { items: [], open: false, seq: 0, activeIndex: -1, error: "" },
+      arr: { items: [], open: false, seq: 0, activeIndex: -1, error: "" },
     },
     suggestTimer: { dep: null, arr: null },
     me: {
@@ -46,6 +46,19 @@
     payDraft: null,
     payInfo: null,
     payPoll: null,
+    chat: {
+      open: false,
+      msgs: [
+        { role: "ai", content: "你好！我是你的智能购票助手。你可以直接对我说：“帮我查明天去上海的高铁”" }
+      ],
+      input: "",
+      loading: false,
+    },
+    kb: {
+      query: "",
+      results: [],
+      doc: { open: false, key: "", title: "", content: "", tags: "", saving: false }
+    }
   };
 
   let renderScheduled = false;
@@ -58,13 +71,38 @@
     });
   }
 
-  function setToast(msg, ms = 2200) {
-    state.toast = msg;
+  function setToast(msg, ms = 2200, type = "info") {
+    if (typeof ms === "string") {
+      type = ms;
+      ms = 2200;
+    }
+    state.toast = { msg: String(msg || ""), type: String(type || "info") };
     renderSoon();
     if (ms > 0) setTimeout(() => {
       state.toast = null;
       renderSoon();
     }, ms);
+  }
+
+  function toastClassName(t) {
+    const type = String(t?.type || "info").toLowerCase();
+    if (type === "success" || type === "error" || type === "warn") return type;
+    return "";
+  }
+
+  function orderStatusMeta(status) {
+    const s = String(status || "").toUpperCase();
+    if (s === "ISSUED") return { label: "已出票", tone: "ok" };
+    if (s === "PAYING" || s === "PENDING_PAY") return { label: "待支付", tone: "warn" };
+    if (s === "CANCELLED") return { label: "已取消", tone: "bad" };
+    if (s === "REFUNDED") return { label: "已退票", tone: "bad" };
+    if (s === "CHANGED") return { label: "已改签", tone: "info" };
+    return { label: status || "-", tone: "info" };
+  }
+
+  function renderStatusTag(status) {
+    const m = orderStatusMeta(status);
+    return `<span class="status-tag ${htmlesc(m.tone)}">${htmlesc(m.label)}</span>`;
   }
 
   function htmlesc(s) {
@@ -95,6 +133,12 @@
     if (!res.ok) {
       const msg = typeof data === "string" ? data : (data?.msg || "请求失败");
       throw new Error(msg);
+    }
+    if (isJson && data && typeof data === "object" && Object.prototype.hasOwnProperty.call(data, "code")) {
+      const code = Number(data.code);
+      if (Number.isFinite(code) && code !== 200) {
+        throw new Error(data.msg || "请求失败");
+      }
     }
     return data;
   }
@@ -590,6 +634,9 @@
     goTrains() {
       setHash("#/trains");
     },
+    goHome() {
+      setHash("#/");
+    },
     doSearch() { doSearch({ cursor: state.search.cursor || "" }); },
     nextPage() {
       if (!state.nextCursor || state.loading) return;
@@ -665,6 +712,14 @@
       renderSoon();
     },
     closeModal() {
+      const m = state.modal;
+      if (m && (m.type === "buy" || m.type === "change")) {
+        const shouldConfirm = m.type === "buy" ? true : Boolean(m.submitting);
+        if (shouldConfirm) {
+          const ok = window.confirm("确定要关闭吗？未完成的操作将丢失。");
+          if (!ok) return;
+        }
+      }
       state.modal = null;
       const { path } = parseHash();
       if (path === "#/order/confirm") setHash("#/trains");
@@ -724,7 +779,11 @@
       if (!m || m.type !== "buy") return;
       const p = m.passengers[idx];
       if (!p) return;
+      const prev = p[field];
       p[field] = el.value;
+      if (field === "seat_type" && prev !== el.value) {
+        p.seat_pref = "";
+      }
       if (field === "passenger_id") {
         p.use_self = false;
         const pid = String(el.value || "").trim();
@@ -819,6 +878,7 @@
       } catch (e) {
         setToast(e.message || "下单失败");
       } finally {
+        if (state.modal && state.modal.type === "buy") state.modal.creating = false;
         renderSoon();
       }
     },
@@ -954,7 +1014,7 @@
         setToast("请选择要改签的车次");
         return;
       }
-      m.loading = true;
+      m.submitting = true;
       render();
       try {
         const resp = await api("POST", "/api/v1/order/change", {
@@ -964,11 +1024,11 @@
           new_arrival_station: m.selected.arrival_station,
         });
         m.resp = resp;
-        setToast("改签成功");
+        setToast("改签成功", 2200, "success");
       } catch (e) {
-        setToast(e.message || "改签失败");
+        setToast(e.message || "改签失败", 2600, "error");
       } finally {
-        m.loading = false;
+        m.submitting = false;
         render();
       }
     },
@@ -992,7 +1052,29 @@
     payPageOpen() {
       const url = state.payDraft?.payResp?.pay_url;
       if (!url) return;
-      window.open(url, "_blank", "noopener,noreferrer");
+      const w = window.open(url, "_blank", "noopener,noreferrer");
+      if (!w) setToast("浏览器拦截了弹窗，请允许弹窗或手动复制 pay_url 打开", 2600, "warn");
+    },
+    copyPayURL() {
+      const url = state.payDraft?.payResp?.pay_url || "";
+      if (!url) { setToast("暂无 pay_url", 1800, "warn"); return; }
+      (async () => {
+        try {
+          if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(url);
+            setToast("已复制 pay_url", 1400, "success");
+            return;
+          }
+        } catch {}
+        try {
+          window.prompt("复制 pay_url", url);
+        } catch {}
+      })();
+    },
+    stopPayPoll() {
+      stopPayPolling();
+      setToast("已停止状态轮询", 1200, "info");
+      renderSoon();
     },
     async payPageMock() {
       const { q } = parseHash();
@@ -1083,13 +1165,189 @@
         render();
       }
     },
+    toggleChat() {
+      state.chat.open = !state.chat.open;
+      renderSoon();
+      if (state.chat.open) {
+        setTimeout(() => {
+          const el = document.getElementById("chat_input");
+          if (el) el.focus();
+          scrollToBottom();
+        }, 100);
+      }
+    },
+    updateChatInput(ev, el) {
+      state.chat.input = el.value;
+    },
+    async sendChat() {
+      const msg = String(state.chat.input || "").trim();
+      if (!msg) return;
+      if (!state.me.token) {
+        state.chat.msgs.push({ role: "ai", content: "请先登录后再使用智能助手功能。" });
+        state.chat.input = "";
+        renderSoon();
+        return;
+      }
+      state.chat.msgs.push({ role: "user", content: msg });
+      state.chat.input = "";
+      state.chat.loading = true;
+      renderSoon();
+      scrollToBottom();
+      
+      try {
+        const resp = await api("POST", "/api/v1/assistant/chat", { message: msg });
+        const reply = resp.reply || "（无回复）";
+        const tool = resp.tool_calls?.[0];
+        const newItem = { role: "ai", content: reply };
+        if (tool) {
+          newItem.tool = {
+            name: tool.tool_name,
+            args: tool.args,
+            result: tool.result,
+            error: tool.error
+          };
+          // 如果工具调用成功，且是搜索/下单类，可以在前端做一些跳转联动
+          if (!tool.error && tool.tool_name === "SearchTrain") {
+             // 自动跳转到列表页并应用搜索条件（可选体验优化）
+             try {
+               let args;
+               if (typeof tool.args === "string") args = JSON.parse(tool.args);
+               else args = tool.args;
+               
+               if (args.departure_station && args.arrival_station) {
+                 state.search.departure_station = args.departure_station;
+                 state.search.arrival_station = args.arrival_station;
+                 if (args.date) state.search.travel_date = args.date;
+                 // 延迟一下跳转，让用户看清回复
+                 setTimeout(() => {
+                   if (location.hash !== "#/trains") setHash("#/trains");
+                   else doSearch();
+                 }, 1500);
+               }
+             } catch {}
+          }
+        }
+        state.chat.msgs.push(newItem);
+      } catch (e) {
+        state.chat.msgs.push({ role: "ai", content: "出错了：" + (e.message || "网络异常") });
+      } finally {
+        state.chat.loading = false;
+        renderSoon();
+        scrollToBottom();
+      }
+    },
+    chatKeydown(ev, el) {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        actions.sendChat();
+      }
+    },
+    navKB() { setHash("#/kb"); },
+    async kbSearch() {
+      // 优先从 DOM 获取最新值，防止 state 不同步
+      const inputEl = document.getElementById("kb_query_input");
+      const domVal = inputEl ? inputEl.value : "";
+      const q = String(domVal || state.kb.query || "").trim();
+      
+      console.log("[kbSearch] Query:", q);
+      if (!q) { 
+        state.kb.results = []; 
+        setToast("请输入关键词");
+        renderSoon(); 
+        return; 
+      }
+      
+      state.loading = true;
+      renderSoon();
+      try {
+        setToast(`正在搜索: ${q}`, 1000); // 增加反馈
+        const resp = await api("POST", "/api/v1/assistant/kb/search", { query: q, limit: 10 });
+        console.log("[kbSearch] Resp:", resp);
+        state.kb.results = resp.items || resp.Items || [];
+        if (state.kb.results.length === 0) {
+            setToast("未找到相关文档", 2000);
+        }
+      } catch (e) {
+        console.error("[kbSearch] Error:", e);
+        setToast(e.message || "搜索失败");
+      } finally {
+        state.loading = false;
+        renderSoon();
+      }
+    },
+    kbEdit(ev, el) {
+      const idx = Number(el.getAttribute("data-idx"));
+      const item = state.kb.results[idx];
+      state.kb.doc = {
+        open: true,
+        key: item?.doc_key || "",
+        title: item?.title || "",
+        content: item?.content || "",
+        tags: (item?.tags || []).join(","),
+        saving: false
+      };
+      renderSoon();
+    },
+    kbNew() {
+      state.kb.doc = {
+        open: true,
+        key: "",
+        title: "",
+        content: "",
+        tags: "",
+        saving: false
+      };
+      renderSoon();
+    },
+    kbClose() {
+      state.kb.doc.open = false;
+      renderSoon();
+    },
+    async kbSave() {
+      const d = state.kb.doc;
+      if (!d.key || !d.title || !d.content) { setToast("请填写完整（Key/标题/内容）"); return; }
+      d.saving = true;
+      renderSoon();
+      try {
+        await api("POST", "/api/v1/assistant/kb/upsert", {
+          doc_key: d.key,
+          title: d.title,
+          content: d.content,
+          tags: d.tags
+        });
+        setToast("保存成功");
+        d.open = false;
+        // 如果当前搜索框有内容，重新搜索刷新列表
+        if (state.kb.query) actions.kbSearch();
+      } catch (e) {
+        setToast(e.message || "保存失败");
+      } finally {
+        d.saving = false;
+        renderSoon();
+      }
+    },
+    updateKBSearch(ev, el) { 
+      state.kb.query = el.value; 
+      // console.log("Input:", el.value); // Debug
+    },
+    updateKBField(ev, el) {
+      const field = el.getAttribute("data-field");
+      state.kb.doc[field] = el.value;
+    }
   };
+
+  function scrollToBottom() {
+    const el = document.getElementById("chat_body");
+    if (el) el.scrollTop = el.scrollHeight;
+  }
 
   async function stationSuggest(which, keyword) {
     const kw = String(keyword || "").trim();
     if (!kw) {
       state.suggest[which].open = false;
       state.suggest[which].items = [];
+      state.suggest[which].activeIndex = -1;
+      state.suggest[which].error = "";
       renderSuggest(which);
       return;
     }
@@ -1102,11 +1360,15 @@
       if (state.suggest[which].seq !== seq) return;
       state.suggest[which].items = resp.items || [];
       state.suggest[which].open = true;
+      state.suggest[which].error = "";
+      state.suggest[which].activeIndex = state.suggest[which].items.length ? 0 : -1;
       renderSuggest(which);
     } catch {
       if (state.suggest[which].seq !== seq) return;
-      state.suggest[which].open = false;
+      state.suggest[which].open = true;
       state.suggest[which].items = [];
+      state.suggest[which].activeIndex = -1;
+      state.suggest[which].error = "网络异常";
       renderSuggest(which);
     }
   }
@@ -1122,9 +1384,18 @@
     if (!host) return;
     const box = state.suggest[which];
     const items = box?.items || [];
-    if (box?.open && items.length) {
+    if (box?.open) {
       host.style.display = "block";
-      host.innerHTML = items.map((s) => `<div class="suggest-item" data-value="${htmlesc(s)}">${htmlesc(s)}</div>`).join("");
+      if (items.length) {
+        const active = Number.isFinite(box.activeIndex) ? box.activeIndex : -1;
+        host.innerHTML = items.map((s, idx) => {
+          const cls = idx === active ? "suggest-item active" : "suggest-item";
+          return `<div class="${cls}" data-value="${htmlesc(s)}" data-idx="${idx}">${htmlesc(s)}</div>`;
+        }).join("");
+      } else {
+        const tip = box?.error ? box.error : "无匹配站点";
+        host.innerHTML = `<div class="suggest-item" style="cursor:default;color:var(--muted);">${htmlesc(tip)}</div>`;
+      }
     } else {
       host.style.display = "none";
       host.innerHTML = "";
@@ -1134,6 +1405,46 @@
   function wireSuggestInputs() {
     const dep = document.getElementById("dep_input");
     const arr = document.getElementById("arr_input");
+    function bindKeydown(which, input) {
+      if (!input) return;
+      input.addEventListener("keydown", (ev) => {
+        const box = state.suggest[which];
+        if (!box?.open) return;
+        const items = box.items || [];
+        const hasItems = items.length > 0;
+        if (ev.key === "Escape") {
+          box.open = false;
+          renderSuggest(which);
+          return;
+        }
+        if (!hasItems) return;
+        const max = items.length - 1;
+        const cur = Number.isFinite(box.activeIndex) ? box.activeIndex : -1;
+        if (ev.key === "ArrowDown") {
+          ev.preventDefault();
+          box.activeIndex = Math.min(max, Math.max(0, cur + 1));
+          renderSuggest(which);
+          return;
+        }
+        if (ev.key === "ArrowUp") {
+          ev.preventDefault();
+          box.activeIndex = Math.max(0, cur - 1);
+          renderSuggest(which);
+          return;
+        }
+        if (ev.key === "Enter") {
+          const idx = Math.max(0, Math.min(max, cur < 0 ? 0 : cur));
+          const v = items[idx] || "";
+          if (!v) return;
+          ev.preventDefault();
+          if (which === "dep") state.search.departure_station = v;
+          if (which === "arr") state.search.arrival_station = v;
+          input.value = v;
+          box.open = false;
+          renderSuggest(which);
+        }
+      });
+    }
     if (dep) {
       dep.addEventListener("input", () => {
         state.search.departure_station = dep.value;
@@ -1144,6 +1455,7 @@
         state.suggest.dep.open = false;
         renderSuggest("dep");
       }, 200));
+      bindKeydown("dep", dep);
     }
     if (arr) {
       arr.addEventListener("input", () => {
@@ -1155,6 +1467,7 @@
         state.suggest.arr.open = false;
         renderSuggest("arr");
       }, 200));
+      bindKeydown("arr", arr);
     }
 
     const depSuggest = document.getElementById("dep_suggest");
@@ -1267,11 +1580,15 @@
     }
   }
 
-  function viewTopbar(active) {
+    function viewTopbar(active) {
     const name = state.me.user_id ? `UID ${state.me.user_id.slice(0, 8)}…` : "未登录";
     const loginPart = state.me.token
       ? `<span class="pill">${htmlesc(name)}</span><button class="btn btn-ghost" data-click="doLogout">退出</button>`
       : `<button class="btn btn-ghost" data-click="navLogin">登录</button>`;
+    
+    // 增加 KB 入口
+    const kbLink = state.me.token ? `<a href="#/kb" class="${active === "kb" ? "active" : ""}" data-click="navKB">知识库</a>` : "";
+
     return `
       <div class="topbar">
         <div class="topbar-inner">
@@ -1281,6 +1598,7 @@
             <a href="#/trains" class="${active === "trains" ? "active" : ""}" data-click="navTrains">列表</a>
             <a href="#/orders" class="${active === "orders" ? "active" : ""}" data-click="navOrders">订单</a>
             <a href="#/account" class="${active === "account" ? "active" : ""}" data-click="navAccount">账户</a>
+            ${kbLink}
           </div>
           <div class="grow"></div>
           <div class="userbox">${loginPart}</div>
@@ -1310,7 +1628,7 @@
     ].map((o) => `<option value="${htmlesc(o.v)}" ${state.search.train_type === o.v ? "selected" : ""}>${htmlesc(o.t)}</option>`).join("");
 
     return `
-      ${viewTopbar("trains")}
+      ${viewTopbar("search")}
       <div class="container">
         <div class="card search-card">
           <div class="search-row">
@@ -1401,15 +1719,55 @@
       `;
     }
 
-    const listBody = items.length
-      ? `
-        <div id="train_list_v" class="train-virt" style="height:${vh}px;">
-          <div style="height:${topSpace}px;"></div>
-          ${(items.slice(start, end).map(renderTrainItem).join(""))}
-          <div style="height:${bottomSpace}px;"></div>
+    const skeletonList = `
+      <div style="padding: 6px;">
+        ${Array.from({ length: 6 }).map(() => {
+          return `
+            <div class="train-item" style="border-style:dashed;">
+              <div class="train-main">
+                <div class="skeleton skeleton-line lg" style="width: 220px;"></div>
+                <div class="skeleton skeleton-line sm" style="width: 280px; margin-top: 10px;"></div>
+              </div>
+              <div>
+                <div class="skeleton skeleton-line sm" style="width: 64px;"></div>
+                <div class="skeleton skeleton-line" style="width: 120px; margin-top: 10px;"></div>
+              </div>
+              <div>
+                <div class="skeleton skeleton-line lg" style="width: 120px;"></div>
+                <div class="skeleton skeleton-line sm" style="width: 140px; margin-top: 10px;"></div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;">
+                <div class="skeleton" style="height: 40px; width: 120px;"></div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+
+    const emptyState = `
+      <div class="empty" style="margin: 12px 6px;">
+        <h3>没有匹配的车次</h3>
+        <p>试试调整日期/车次类型/席别，或取消“只看有票”。</p>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top: 12px; flex-wrap: wrap;">
+          <button class="btn btn-secondary" data-click="swapStations">交换出发到达</button>
+          <button class="btn btn-primary" data-click="resetSearch">重新搜索</button>
+          <button class="btn btn-link" data-click="goHome">回到查询页</button>
         </div>
-      `
-      : `<div class="muted" style="padding:12px 6px;">${state.loading ? "查询中…" : "暂无结果，先搜索一下"}</div>`;
+      </div>
+    `;
+
+    const listBody = state.loading
+      ? skeletonList
+      : (items.length
+        ? `
+          <div id="train_list_v" class="train-virt" style="height:${vh}px;">
+            <div style="height:${topSpace}px;"></div>
+            ${(items.slice(start, end).map(renderTrainItem).join(""))}
+            <div style="height:${bottomSpace}px;"></div>
+          </div>
+        `
+        : emptyState);
 
     const seatOptions = [
       { v: "", t: "不限席别" },
@@ -1479,7 +1837,7 @@
                   <option value="" ${state.search.sort ? "" : "selected"}>默认(发车时间)</option>
                   <option value="time" ${state.search.sort === "time" ? "selected" : ""}>按发车时间</option>
                   <option value="remain" ${state.search.sort === "remain" ? "selected" : ""}>按余票</option>
-                  <option value="price" ${state.search.sort === "price" ? "selected" : ""}>按价格</option>
+                  <option value="price" ${state.search.sort === "price" ? "selected" : ""} ${state.search.seat_type ? "" : "disabled"}>按价格${state.search.seat_type ? "" : "(需选席别)"}</option>
                 </select>
                 <select class="select" style="width:120px;" data-input="direction">
                   <option value="asc" ${String(state.search.direction).toLowerCase() !== "desc" ? "selected" : ""}>正序</option>
@@ -1609,8 +1967,11 @@
 
     const info = state.payInfo?.order || null;
     const payUrl = state.payDraft?.payResp?.pay_url || "";
+    const payNo = state.payDraft?.payResp?.pay_no || "";
     const st = String(info?.order_status || "").trim() || "-";
     const deadline = info?.pay_deadline_unix ? new Date(info.pay_deadline_unix * 1000).toLocaleString() : "-";
+    const isSandbox = payUrl.includes("openapi.alipaydev.com");
+    const polling = Boolean(state.payPoll);
 
     return `
       ${viewTopbar("")}
@@ -1620,10 +1981,22 @@
           <div class="muted small">订单ID：${htmlesc(orderId || "-")}</div>
           <div class="card" style="padding:12px;margin-top:12px;">
             <div class="row">
-              <div><div class="muted small">状态</div><div>${htmlesc(st)}</div></div>
+              <div>
+                <div class="muted small">状态</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  ${renderStatusTag(st)}
+                  ${polling ? `<span class="tag" style="background:rgba(22,119,255,0.10);color:#1d4ed8;">状态轮询中</span>` : ``}
+                </div>
+              </div>
               <div><div class="muted small">支付截止</div><div>${htmlesc(deadline)}</div></div>
             </div>
           </div>
+          ${isSandbox ? `
+            <div class="banner warn" style="margin-top:12px;">
+              当前为支付宝沙箱环境，网关偶发 502/不可用属于外部环境问题。
+              如果收银台打不开，可使用“模拟回调成功”先验证下单→支付→出票链路。
+            </div>
+          ` : ``}
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
             <div class="muted small">支付渠道</div>
             <select id="pay_channel" class="select" style="width:200px;padding:8px 10px;">
@@ -1634,12 +2007,28 @@
           </div>
           <div class="actions">
             <button class="btn btn-primary" data-click="payPagePay" data-order-id="${htmlesc(orderId)}">发起支付</button>
-            <button class="btn btn-light" data-click="payPageOpen" ${payUrl ? "" : "disabled"}>打开收银台</button>
-            <button class="btn btn-light" data-click="payPageMock" ${state.payDraft?.payResp?.pay_no ? "" : "disabled"}>模拟回调成功</button>
-            <button class="btn btn-light" data-click="payPageRefresh">刷新状态</button>
-            <button class="btn btn-light" data-click="navOrders">订单中心</button>
+            <button class="btn btn-secondary" data-click="payPageOpen" ${payUrl ? "" : "disabled"}>打开收银台</button>
+            <button class="btn btn-secondary" data-click="payPageMock" ${state.payDraft?.payResp?.pay_no ? "" : "disabled"}>模拟回调成功</button>
+            <button class="btn btn-secondary" data-click="payPageRefresh">刷新状态</button>
+            <button class="btn btn-secondary" data-click="stopPayPoll" ${polling ? "" : "disabled"}>停止轮询</button>
+            <button class="btn btn-link" data-click="navOrders">订单中心</button>
           </div>
-          ${payUrl ? `<div class="card" style="padding:12px;margin-top:12px;word-break:break-all;"><div class="muted small">pay_url</div><div>${htmlesc(payUrl)}</div></div>` : ``}
+          ${payUrl ? `
+            <div class="card" style="padding:12px;margin-top:12px;">
+              <div class="row">
+                <div>
+                  <div class="muted small">pay_no</div>
+                  <div style="word-break:break-all;">${htmlesc(payNo || "-")}</div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; align-items:end; gap:10px; flex-wrap: wrap;">
+                  <button class="btn btn-secondary" data-click="copyPayURL">复制 pay_url</button>
+                  <button class="btn btn-secondary" data-click="payPageOpen">新窗口打开</button>
+                </div>
+              </div>
+              <div style="margin-top:10px;" class="muted small">pay_url</div>
+              <div style="word-break:break-all;">${htmlesc(payUrl)}</div>
+            </div>
+          ` : ``}
         </div>
       </div>
     `;
@@ -1659,19 +2048,26 @@
       `;
     }
 
-    const rows = (state.orders || []).map((o) => `
+    const rows = (state.orders || []).map((o) => {
+      const st = String(o.order_status || "").toUpperCase();
+      const canCancel = st === "PENDING_PAY" || st === "PAYING";
+      const canRefund = st === "ISSUED";
+      const canPay = st === "PENDING_PAY" || st === "PAYING";
+      return `
       <tr>
         <td><a href="#/order/${htmlesc(o.order_id)}" data-click="navOrder" data-order-id="${htmlesc(o.order_id)}">${htmlesc(o.order_id)}</a></td>
         <td>${htmlesc(o.train_id)}</td>
         <td>${htmlesc(o.departure_station)} → ${htmlesc(o.arrival_station)}</td>
         <td>¥${Number(o.total_amount || 0).toFixed(2)}</td>
-        <td>${htmlesc(o.order_status || "-")}</td>
+        <td>${renderStatusTag(o.order_status || "-")}</td>
         <td>
-          <button class="btn btn-light" data-click="cancelOrder" data-order-id="${htmlesc(o.order_id)}">取消</button>
-          <button class="btn btn-light" data-click="refundOrder" data-order-id="${htmlesc(o.order_id)}">退票</button>
+          ${canPay ? `<a class="btn btn-primary" href="#/pay?order_id=${encodeURIComponent(o.order_id)}">去支付</a>` : ``}
+          <button class="btn btn-secondary" data-click="cancelOrder" data-order-id="${htmlesc(o.order_id)}" ${canCancel ? "" : "disabled"}>取消</button>
+          <button class="btn btn-secondary" data-click="refundOrder" data-order-id="${htmlesc(o.order_id)}" ${canRefund ? "" : "disabled"}>退票</button>
         </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
 
     return `
       ${viewTopbar("orders")}
@@ -1802,6 +2198,11 @@
       </tr>
     `).join("");
 
+    const st = String(order?.order_status || "").toUpperCase();
+    const canCancel = st === "PENDING_PAY" || st === "PAYING";
+    const canRefund = st === "ISSUED";
+    const canPay = st === "PENDING_PAY" || st === "PAYING";
+
     return `
       ${viewTopbar("orders")}
       <div class="container">
@@ -1816,14 +2217,15 @@
                 <div><div class="muted small">金额</div><div>¥${Number(order.total_amount || 0).toFixed(2)}</div></div>
               </div>
               <div class="row" style="margin-top:10px;">
-                <div><div class="muted small">状态</div><div>${htmlesc(order.order_status || "-")}</div></div>
+                <div><div class="muted small">状态</div><div>${renderStatusTag(order.order_status || "-")}</div></div>
                 <div><div class="muted small">支付截止</div><div>${new Date((order.pay_deadline_unix || 0) * 1000).toLocaleString()}</div></div>
               </div>
             </div>
             <div class="actions">
               <button class="btn btn-light" data-click="navOrders">返回订单列表</button>
-              <button class="btn btn-light" data-click="cancelOrder" data-order-id="${htmlesc(orderId)}">取消</button>
-              <button class="btn btn-light" data-click="refundOrder" data-order-id="${htmlesc(orderId)}">退票</button>
+              ${canPay ? `<a class="btn btn-primary" href="#/pay?order_id=${encodeURIComponent(orderId)}">去支付</a>` : ``}
+              <button class="btn btn-secondary" data-click="cancelOrder" data-order-id="${htmlesc(orderId)}" ${canCancel ? "" : "disabled"}>取消</button>
+              <button class="btn btn-secondary" data-click="refundOrder" data-order-id="${htmlesc(orderId)}" ${canRefund ? "" : "disabled"}>退票</button>
               <button class="btn btn-primary" data-click="openChange" data-order-id="${htmlesc(orderId)}">改签</button>
             </div>
             <div style="margin-top:12px;overflow:auto;">
@@ -1840,12 +2242,109 @@
 
   actions.reloadOrders = () => loadOrders();
 
+  function viewKB() {
+    if (!state.me.token) {
+      return `
+        ${viewTopbar("kb")}
+        <div class="container">
+          <div class="card panel">
+            <h3>知识库管理</h3>
+            <div class="muted">需要先登录</div>
+            <div class="actions"><button class="btn btn-primary" data-click="navLogin">去登录</button></div>
+          </div>
+        </div>
+      `;
+    }
+    
+    const rows = state.kb.results.map((d, idx) => `
+      <tr>
+        <td>${htmlesc(d.doc_key)}</td>
+        <td>${htmlesc(d.title)}</td>
+        <td><div class="muted small" style="max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${htmlesc(d.content)}</div></td>
+        <td>${(d.tags || []).map(t => `<span class="tag">${htmlesc(t)}</span>`).join(" ")}</td>
+        <td>
+          <button class="btn btn-secondary" data-click="kbEdit" data-idx="${idx}">编辑</button>
+        </td>
+      </tr>
+    `).join("");
+
+    return `
+      ${viewTopbar("kb")}
+      <div class="container">
+        <div class="card panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>知识库管理</h3>
+            <button class="btn btn-primary" data-click="kbNew">新建文档</button>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <div class="field">
+              <input class="input" placeholder="输入关键词搜索文档..." value="${htmlesc(state.kb.query)}" data-input="kb_search" />
+            </div>
+            <div style="flex:0 0 80px;">
+              <button class="btn btn-primary" style="width:100%;" data-click="kbSearch" ${state.loading ? "disabled" : ""}>搜索</button>
+            </div>
+          </div>
+          
+          <div style="margin-top:16px;overflow:auto;">
+            <table class="table">
+              <thead><tr><th>Key</th><th>标题</th><th>内容摘要</th><th>标签</th><th>操作</th></tr></thead>
+              <tbody>
+                ${rows || `<tr><td colspan="5" class="muted" style="text-align:center;padding:20px;">${state.loading ? "加载中..." : (state.kb.query ? "无匹配结果" : "请输入关键词搜索")}</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function viewModal() {
     const m = state.modal;
+    if (state.kb.doc.open) {
+       const d = state.kb.doc;
+       return `
+        <div class="modal-mask" data-click="kbClose">
+          <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-head">
+              <div><strong>${d.key ? "编辑文档" : "新建文档"}</strong></div>
+              <button class="close" data-click="kbClose">关闭</button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <div class="field">
+                  <label>文档唯一键 (Key)</label>
+                  <input class="input" value="${htmlesc(d.key)}" data-field="key" placeholder="如 refund_policy_v1" ${d.saving ? "disabled" : ""} />
+                </div>
+                <div class="field">
+                  <label>标题</label>
+                  <input class="input" value="${htmlesc(d.title)}" data-field="title" placeholder="如 退票规则" ${d.saving ? "disabled" : ""} />
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>正文内容</label>
+                <textarea class="input" style="height:120px;resize:vertical;" data-field="content" placeholder="输入文档正文..." ${d.saving ? "disabled" : ""}>${htmlesc(d.content)}</textarea>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>标签 (逗号分隔)</label>
+                <input class="input" value="${htmlesc(d.tags)}" data-field="tags" placeholder="如 规则,退票" ${d.saving ? "disabled" : ""} />
+              </div>
+              <div class="actions">
+                <button class="btn btn-secondary" data-click="kbClose" ${d.saving ? "disabled" : ""}>取消</button>
+                <button class="btn btn-primary" data-click="kbSave" ${d.saving ? "disabled" : ""}>保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+       `;
+    }
+
     if (!m) return "";
 
     if (m.type === "verify_realname") {
       const e = m.errors || {};
+      const phoneHint = (String(state.me.phone || "").trim() && String(m.phone || "").trim() && String(m.phone || "").trim() !== String(state.me.phone || "").trim())
+        ? `<div class="banner warn" style="margin-top:10px;">手机号需与当前账号一致（当前账号：${htmlesc(state.me.phone)}）。</div>`
+        : "";
       return `
         <div class="modal-mask" data-click="closeModal">
           <div class="modal" onclick="event.stopPropagation()">
@@ -1854,23 +2353,24 @@
               <button class="close" data-click="closeModal">关闭</button>
             </div>
             <div class="modal-body">
-              <div class="muted small">购票规则：未实名认证用户不可下单，请先完成实名校验。</div>
+              <div class="banner info">购票规则：未实名认证用户不可下单。请提交姓名 + 身份证 + 当前账号手机号。</div>
+              ${phoneHint}
               <div class="row" style="margin-top:10px;">
                 <div class="field">
                   <label>姓名</label>
-                  <input id="verify_real_name" class="input" value="${htmlesc(m.real_name || "")}" placeholder="如 张三" />
+                  <input id="verify_real_name" class="input ${e.real_name ? "invalid" : ""}" value="${htmlesc(m.real_name || "")}" placeholder="如 张三" />
                   ${e.real_name ? `<div class="error">${htmlesc(e.real_name)}</div>` : ""}
                 </div>
                 <div class="field">
                   <label>身份证号</label>
-                  <input id="verify_id_card" class="input" value="${htmlesc(m.id_card || "")}" placeholder="18位身份证号" />
+                  <input id="verify_id_card" class="input ${e.id_card ? "invalid" : ""}" value="${htmlesc(m.id_card || "")}" placeholder="18位身份证号" />
                   ${e.id_card ? `<div class="error">${htmlesc(e.id_card)}</div>` : ""}
                 </div>
               </div>
               <div class="row" style="margin-top:10px;">
                 <div class="field">
                   <label>手机号</label>
-                  <input id="verify_phone" class="input" value="${htmlesc(m.phone || "")}" placeholder="11位手机号" />
+                  <input id="verify_phone" class="input ${e.phone ? "invalid" : ""}" value="${htmlesc(m.phone || "")}" placeholder="11位手机号" />
                   ${e.phone ? `<div class="error">${htmlesc(e.phone)}</div>` : ""}
                 </div>
                 <div class="field">
@@ -1879,7 +2379,7 @@
                 </div>
               </div>
               <div class="actions">
-                <button class="btn btn-light" data-click="closeModal" ${m.submitting ? "disabled" : ""}>取消</button>
+                <button class="btn btn-secondary" data-click="closeModal" ${m.submitting ? "disabled" : ""}>取消</button>
                 <button class="btn btn-primary" data-click="submitVerifyRealName" ${m.submitting ? "disabled" : ""}>提交认证</button>
               </div>
             </div>
@@ -1903,6 +2403,22 @@
       }).join("");
 
       const errs = m.errors || {};
+
+      const seatTypes = m.detail?.seat_types || [];
+      const seatTypeRemain = new Map();
+      for (const s of seatTypes) seatTypeRemain.set(String(s.seat_type || "").trim(), Number(s.remaining || 0) || 0);
+      const needByType = new Map();
+      for (const p of (m.passengers || [])) {
+        const st = String(p.seat_type || "").trim();
+        if (!st) continue;
+        needByType.set(st, (needByType.get(st) || 0) + 1);
+      }
+      const shortageTypes = [];
+      for (const [st, need] of needByType.entries()) {
+        const rem = seatTypeRemain.get(st) || 0;
+        if (rem < need) shortageTypes.push(`${st} 余票 ${rem} < 需要 ${need}`);
+      }
+      const seatDetailHint = m.detail ? "" : `<div class="banner info" style="margin-top:10px;">车次详情加载中（席别/余票/票价）…</div>`;
       const ps = m.passengers.map((p, idx) => {
         const e = errs[idx] || {};
         const isSelf = !!p.use_self;
@@ -1911,6 +2427,8 @@
         const selectedSeatType = String(p.seat_type || "").trim();
         const remainEntry = (m.detail?.seat_types || []).find((x) => x.seat_type === selectedSeatType);
         const remain = remainEntry ? Number(remainEntry.remaining || 0) : 0;
+        const need = selectedSeatType ? (needByType.get(selectedSeatType) || 0) : 0;
+        const shortage = selectedSeatType && remain > 0 && need > remain;
         const seatLabel = p.seat_pref ? `偏好：${p.seat_pref}` : "偏好：自动分配";
         const cols = ["A", "B", "", "C", "D"];
         let seatButtons = "";
@@ -1945,9 +2463,9 @@
               </select>
             </div>
             <div style="display:flex;align-items:end;justify-content:flex-end;gap:10px;">
-              <button class="btn btn-light" data-click="useSelfPassenger" data-idx="${idx}">本人</button>
-              <button class="btn btn-light" data-click="reloadPassengers" ${state.passengers.loading ? "disabled" : ""}>刷新</button>
-              <button class="btn btn-light" data-click="removePassenger" data-idx="${idx}">删除</button>
+              <button class="btn btn-secondary" data-click="useSelfPassenger" data-idx="${idx}">本人</button>
+              <button class="btn btn-secondary" data-click="reloadPassengers" ${state.passengers.loading ? "disabled" : ""}>刷新</button>
+              <button class="btn btn-secondary" data-click="removePassenger" data-idx="${idx}" ${m.passengers.length <= 1 ? "disabled" : ""}>删除</button>
             </div>
           </div>
           <div class="row">
@@ -1965,7 +2483,7 @@
           <div class="row" style="margin-top:10px;">
             <div class="field">
               <label>席别</label>
-              <select class="select" data-idx="${idx}" data-field="seat_type" data-click="noop">
+              <select class="select" ${m.detail ? "" : "disabled"} data-idx="${idx}" data-field="seat_type" data-click="noop">
                 <option value="">请选择</option>
                 ${seatOptions}
               </select>
@@ -1975,6 +2493,7 @@
           </div>
           <div style="margin-top:10px;">
             <div class="muted small">${htmlesc(seatLabel)}${selectedSeatType ? ` · 实时余票 ${remain}` : ""}</div>
+            ${shortage ? `<div class="banner warn" style="margin-top:10px;">${htmlesc(selectedSeatType)} 余票不足（${remain}），当前选择人数为 ${need}。</div>` : ""}
             <div class="seat-map">${seatButtons}</div>
           </div>
         </div>
@@ -2036,7 +2555,7 @@
             ${passengerSummary || `<div class="muted small" style="margin-top:8px;">暂无乘客</div>`}
           </div>
           <div class="actions">
-            <button class="btn btn-light" data-click="buyPrev">上一步</button>
+            <button class="btn btn-secondary" data-click="buyPrev" ${m.creating ? "disabled" : ""}>上一步</button>
             <button class="btn btn-primary" data-click="createOrder" ${m.creating ? "disabled" : ""}>提交订单并锁座</button>
           </div>
         `
@@ -2044,7 +2563,7 @@
           <div class="muted small" style="margin-top:6px;">先选择乘客与席别，下一步确认订单后再提交锁座。</div>
           ${ps}
           <div class="actions">
-            <button class="btn btn-light" data-click="addPassenger">添加乘客</button>
+            <button class="btn btn-secondary" data-click="addPassenger">添加乘客</button>
             <button class="btn btn-primary" data-click="buyNext">下一步</button>
           </div>
         `;
@@ -2059,6 +2578,8 @@
             <div class="modal-body">
               ${stepper}
               <div class="muted small">车次：${htmlesc(m.train.train_id)} · 运行时长：${formatMin(m.train.runtime_minutes)}</div>
+              ${seatDetailHint}
+              ${shortageTypes.length ? `<div class="banner warn" style="margin-top:10px;">余票提示：${htmlesc(shortageTypes.join("；"))}</div>` : ""}
               ${body}
             </div>
           </div>
@@ -2118,10 +2639,14 @@
     }
 
     if (m.type === "change") {
+      const loading = Boolean(m.loading);
+      const submitting = Boolean(m.submitting);
+
       const rows = (m.trains || []).map((t) => {
         const active = m.selected?.train_id === t.train_id;
+        const disabled = Number(t.remaining_seat_count || 0) <= 0;
         return `
-          <div class="train-item" style="grid-template-columns: 1.4fr 1fr 1fr 120px; border-color:${active ? "rgba(255,122,0,0.5)" : "var(--border)"}">
+          <div class="train-item" style="grid-template-columns: 1.4fr 1fr 1fr 120px; border-color:${active ? "rgba(22,119,255,0.45)" : "var(--border)"}; opacity:${disabled ? "0.65" : "1"}">
             <div class="train-main">
               <div class="train-title">${htmlesc(t.train_id)} <span class="tag">${htmlesc(t.train_type)}</span></div>
               <div class="train-sub">${htmlesc(t.departure_station)} → ${htmlesc(t.arrival_station)} · ${formatMin(t.runtime_minutes)}</div>
@@ -2135,11 +2660,37 @@
               <div class="remain ${t.remaining_seat_count > 0 ? "ok" : "bad"}">${t.remaining_seat_count > 0 ? `余票 ${t.remaining_seat_count}` : "无票"}</div>
             </div>
             <div style="display:flex;justify-content:flex-end;">
-              <button class="btn btn-light" data-click="pickChangeTrain" data-train-id="${htmlesc(t.train_id)}">选择</button>
+              <button class="btn btn-secondary" ${disabled ? "disabled" : ""} title="${disabled ? "无票不可选" : "选择该车次"}" data-click="pickChangeTrain" data-train-id="${htmlesc(t.train_id)}">选择</button>
             </div>
           </div>
         `;
       }).join("");
+
+      const skeletonRows = Array.from({ length: 4 }).map(() => {
+        return `
+          <div class="train-item" style="border-style:dashed;">
+            <div class="train-main">
+              <div class="skeleton skeleton-line lg" style="width: 220px;"></div>
+              <div class="skeleton skeleton-line sm" style="width: 280px; margin-top: 10px;"></div>
+            </div>
+            <div>
+              <div class="skeleton skeleton-line sm" style="width: 64px;"></div>
+              <div class="skeleton skeleton-line" style="width: 120px; margin-top: 10px;"></div>
+            </div>
+            <div>
+              <div class="skeleton skeleton-line lg" style="width: 120px;"></div>
+              <div class="skeleton skeleton-line sm" style="width: 140px; margin-top: 10px;"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;">
+              <div class="skeleton" style="height: 40px; width: 90px;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const listArea = loading
+        ? `<div style="margin-top:10px;">${skeletonRows}</div>`
+        : (rows || `<div class="empty" style="margin-top:10px;"><h3>没有可改签的车次</h3><p>试试调整日期或区间后重新查询。</p></div>`);
 
       return `
         <div class="modal-mask" data-click="closeModal">
@@ -2149,32 +2700,56 @@
               <button class="close" data-click="closeModal">关闭</button>
             </div>
             <div class="modal-body">
-              <div class="row">
-                <div class="field">
-                  <label>出发站</label>
-                  <input class="input" value="${htmlesc(m.departure_station)}" data-field="departure_station" />
+              <div class="modal-grid">
+                <div>
+                  <div class="row">
+                    <div class="field">
+                      <label>出发站</label>
+                      <input class="input" value="${htmlesc(m.departure_station)}" data-field="departure_station" ${submitting ? "disabled" : ""} />
+                    </div>
+                    <div class="field">
+                      <label>到达站</label>
+                      <input class="input" value="${htmlesc(m.arrival_station)}" data-field="arrival_station" ${submitting ? "disabled" : ""} />
+                    </div>
+                  </div>
+                  <div class="row" style="margin-top:10px;">
+                    <div class="field">
+                      <label>出行日期（用于查询）</label>
+                      <input class="input" type="date" value="${htmlesc(m.travel_date)}" data-field="travel_date" ${submitting ? "disabled" : ""} />
+                    </div>
+                    <div style="display:flex;align-items:end;justify-content:flex-end;">
+                      <button class="btn btn-primary" data-click="changeSearch" ${loading || submitting ? "disabled" : ""}>查询可改签车次</button>
+                    </div>
+                  </div>
+
+                  <div class="banner info" style="margin-top:10px;">选择一个新车次后点击“提交改签”，会调用 /api/v1/order/change。</div>
+                  ${listArea}
+
+                  <div class="actions">
+                    <button class="btn btn-secondary" data-click="closeModal" ${submitting ? "disabled" : ""}>取消</button>
+                    <button class="btn btn-primary" data-click="submitChange" ${submitting || !m.selected ? "disabled" : ""}>提交改签</button>
+                  </div>
                 </div>
-                <div class="field">
-                  <label>到达站</label>
-                  <input class="input" value="${htmlesc(m.arrival_station)}" data-field="arrival_station" />
+
+                <div class="sticky">
+                  <div class="card" style="padding:12px; box-shadow:none;">
+                    <div class="muted small">已选新车次</div>
+                    ${m.selected ? `
+                      <div style="margin-top:6px;"><strong>${htmlesc(m.selected.train_id)}</strong> <span class="tag">${htmlesc(m.selected.train_type)}</span></div>
+                      <div class="muted small" style="margin-top:6px;">${htmlesc(m.selected.departure_station)} → ${htmlesc(m.selected.arrival_station)} · ${formatMin(m.selected.runtime_minutes)}</div>
+                      <div style="margin-top:8px;"><span class="price" style="font-size:16px;">¥${Number(m.selected.seat_price || 0).toFixed(2)}</span> <span class="muted small">余票 ${Number(m.selected.remaining_seat_count || 0)}</span></div>
+                    ` : `<div style="margin-top:8px;" class="muted small">未选择</div>`}
+                  </div>
+
+                  ${m.resp ? `
+                    <div class="card" style="padding:12px;margin-top:12px; box-shadow:none;">
+                      <div class="muted small">改签结果</div>
+                      <div style="margin-top:6px;">新订单：<a class="btn btn-link" href="#/order/${htmlesc(m.resp.new_order_id || "")}">${htmlesc(m.resp.new_order_id || "-")}</a></div>
+                      <div class="muted small" style="margin-top:6px;">差额：${Number(m.resp.refund_diff_amount || 0).toFixed(2)}（>0 退，<0 补）</div>
+                    </div>
+                  ` : ""}
                 </div>
               </div>
-              <div class="row" style="margin-top:10px;">
-                <div class="field">
-                  <label>出行日期（用于查询）</label>
-                  <input class="input" type="date" value="${htmlesc(m.travel_date)}" data-field="travel_date" />
-                </div>
-                <div style="display:flex;align-items:end;justify-content:flex-end;">
-                  <button class="btn btn-primary" data-click="changeSearch" ${m.loading ? "disabled" : ""}>查询可改签车次</button>
-                </div>
-              </div>
-              <div style="margin-top:10px;" class="muted small">选择一个新车次后点击“提交改签”，会调用 /api/v1/order/change。</div>
-              <div style="margin-top:10px;">${rows || `<div class="muted">${m.loading ? "查询中…" : "暂无结果"}</div>`}</div>
-              <div class="actions">
-                <button class="btn btn-light" data-click="closeModal">取消</button>
-                <button class="btn btn-primary" data-click="submitChange" ${m.loading || !m.selected ? "disabled" : ""}>提交改签</button>
-              </div>
-              ${m.resp ? `<div class="card" style="padding:12px;margin-top:12px;"><div class="muted small">改签结果</div><div>新订单：${htmlesc(m.resp.new_order_id || "-")}</div><div class="muted small" style="margin-top:6px;">差额：${Number(m.resp.refund_diff_amount || 0).toFixed(2)}（>0 退，<0 补）</div></div>` : ""}
             </div>
           </div>
         </div>
@@ -2226,6 +2801,54 @@
     });
   }
 
+  function viewChat() {
+    if (!state.chat.open) {
+      return `<div class="chat-fab" data-click="toggleChat">💬</div>`;
+    }
+    const msgs = state.chat.msgs.map((m) => {
+      const isUser = m.role === "user";
+      const toolView = m.tool ? `
+        <div class="chat-tool">
+          <div class="chat-tool-head">
+            <span>🛠 调用工具：${htmlesc(m.tool.name)}</span>
+            <span>${m.tool.error ? `<span style="color:var(--bad)">失败</span>` : `<span style="color:var(--ok)">成功</span>`}</span>
+          </div>
+          <div class="chat-tool-content">${htmlesc(m.tool.args)}</div>
+          ${m.tool.result ? `<div style="margin-top:6px;border-top:1px dashed #e5e7eb;padding-top:6px;" class="chat-tool-content">${htmlesc(m.tool.result.slice(0, 120) + (m.tool.result.length > 120 ? "..." : ""))}</div>` : ""}
+        </div>
+      ` : "";
+      return `
+        <div class="chat-msg ${isUser ? "user" : "ai"}">
+          <div class="chat-bubble">${htmlesc(m.content)}</div>
+          ${toolView}
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="chat-fab" data-click="toggleChat" style="transform: scale(0); opacity: 0;"></div>
+      <div class="chat-window">
+        <div class="chat-header">
+          <div style="font-weight:700;display:flex;align-items:center;gap:8px;">
+            <span>🤖 智能助手</span>
+            <span class="tag" style="font-weight:400;font-size:10px;">Beta</span>
+          </div>
+          <button class="close" data-click="toggleChat">×</button>
+        </div>
+        <div id="chat_body" class="chat-body">
+          ${msgs}
+          ${state.chat.loading ? `<div class="chat-msg ai"><div class="chat-bubble"><div class="muted small">思考中...</div></div></div>` : ""}
+        </div>
+        <div class="chat-footer">
+          <div class="chat-input-box">
+            <textarea id="chat_input" class="chat-input" placeholder="输入你想做的事..." rows="1" data-input="chat" data-keydown="chatKeydown"></textarea>
+            <button class="btn btn-primary" data-click="sendChat" ${state.chat.loading ? "disabled" : ""}>发送</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function render() {
     const active = document.activeElement;
     const focusSnapshot = (() => {
@@ -2255,10 +2878,12 @@
     else if (path === "#/register") view = viewRegister();
     else if (path === "#/orders") view = viewOrders();
     else if (path === "#/account" || path === "#/me") view = viewMe();
+    else if (path === "#/kb") view = viewKB();
     else if (path.startsWith("#/order/")) view = viewOrderDetail(path.slice("#/order/".length));
     else view = viewHome();
 
-    $app.innerHTML = view + viewModal() + (state.toast ? `<div class="toast">${htmlesc(state.toast)}</div>` : "");
+    const toast = state.toast ? `<div class="toast ${toastClassName(state.toast)}">${htmlesc(state.toast.msg)}</div>` : "";
+    $app.innerHTML = view + viewModal() + viewChat() + toast;
     mountEvents();
     wireModalInputs();
     wirePayInputs();
@@ -2267,6 +2892,25 @@
     wireSuggestInputs();
     wireVirtualList();
     syncRemainWS();
+
+    const chatIn = document.getElementById("chat_input");
+    if (chatIn) {
+      chatIn.addEventListener("input", (ev) => actions.updateChatInput(ev, chatIn));
+      chatIn.addEventListener("keydown", (ev) => actions.chatKeydown(ev, chatIn));
+      chatIn.value = state.chat.input || "";
+    }
+
+    const kbSearchIn = document.getElementById("kb_query_input");
+    if (kbSearchIn) {
+      kbSearchIn.addEventListener("input", (ev) => actions.updateKBSearch(ev, kbSearchIn));
+      kbSearchIn.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") actions.kbSearch();
+      });
+    }
+
+    document.querySelectorAll('[data-field]').forEach(el => {
+      el.addEventListener("input", (ev) => actions.updateKBField(ev, el));
+    });
 
     if (focusSnapshot) {
       const el = document.getElementById(focusSnapshot.id);
@@ -2317,6 +2961,9 @@
           else setToast("请先在车次列表选择要预订的车次");
         })();
       }
+    }
+    if (path === "#/kb") {
+      // 首次进入 KB 页不自动查，等用户搜
     }
     render();
   });
