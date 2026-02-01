@@ -29,10 +29,10 @@ type Snapshot struct {
 }
 
 // Collector 监控数据采集
-// 关键算法说明：
-// - 吞吐量使用滑动时间窗口(秒级桶)统计
-// - 延迟使用累计求和/计数求平均
-// - 准确率基于人工审核结果校验模型建议
+// 关键算法说明  ?
+// - 吞吐量使用滑动时间窗  ?秒级  ?统计
+// - 延迟使用累计求和/计数求平  ?
+// - 准确率基于人工审核结果校验模型建  ?
 
 
 type Collector struct {
@@ -57,7 +57,7 @@ func NewCollector(windowSeconds int) *Collector {
 	return &Collector{window: newThroughputWindow(windowSeconds)}
 }
 
-// RecordDecision 记录决策与延迟
+// RecordDecision 记录决策与延  ?
 func (c *Collector) RecordDecision(decision DecisionType, latency time.Duration) {
 	atomic.AddInt64(&c.totalCount, 1)
 	atomic.AddInt64(&c.latencySumNs, latency.Nanoseconds())
@@ -65,8 +65,8 @@ func (c *Collector) RecordDecision(decision DecisionType, latency time.Duration)
 	c.window.Add(time.Now())
 }
 
-// RecordManualOutcome 记录人工审核结果与模型建议的一致性
-// 仅当 suggested 为 Pass/Reject 时参与准确率统计
+// RecordManualOutcome 记录人工审核结果与模型建议的一致  ?
+// 仅当 suggested   ?Pass/Reject 时参与准确率统计
 func (c *Collector) RecordManualOutcome(suggested DecisionType, final DecisionType) {
 	if suggested != DecisionPass && suggested != DecisionReject {
 		return
@@ -150,3 +150,4 @@ func (w *throughputWindow) QPS(now time.Time) float64 {
 	}
 	return float64(total) / float64(w.size)
 }
+

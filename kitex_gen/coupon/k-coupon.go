@@ -467,3 +467,4 @@ func (p *CouponServiceTestArgs) GetFirstArgument() interface{} {
 func (p *CouponServiceTestResult) GetResult() interface{} {
 	return p.Success
 }
+

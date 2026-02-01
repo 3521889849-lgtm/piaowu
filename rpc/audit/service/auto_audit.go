@@ -3,17 +3,17 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"example_shop/common/config"
-	"example_shop/common/db"
-	"example_shop/common/model/audit"
-	audit_kitex "example_shop/kitex_gen/audit"
-	"example_shop/rpc/audit/component/alert"
-	"example_shop/rpc/audit/component/decision"
-	"example_shop/rpc/audit/component/metrics"
-	"example_shop/rpc/audit/component/ml"
-	"example_shop/rpc/audit/component/rule_engine"
-	"example_shop/rpc/audit/component/threshold"
 	"log"
+	"piaowu/common/config"
+	"piaowu/common/db"
+	"piaowu/common/model/audit"
+	audit_kitex "piaowu/kitex_gen/audit"
+	"piaowu/rpc/audit/component/alert"
+	"piaowu/rpc/audit/component/decision"
+	"piaowu/rpc/audit/component/metrics"
+	"piaowu/rpc/audit/component/ml"
+	"piaowu/rpc/audit/component/rule_engine"
+	"piaowu/rpc/audit/component/threshold"
 	"strconv"
 	"sync"
 	"time"
@@ -21,17 +21,15 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type AutoAuditService struct {
 	engine         *rule_engine.RuleEngine
 	decisionEngine *decision.Engine
 	initOnce       sync.Once
 }
 
-
 var AutoAuditSvc = new(AutoAuditService)
 
-// Init 初始化服务（加载规则引擎/模型/阈值/监控/告警）
+// Init 初始化服务（加载规则引擎/模型/阈  ?监控/告警  ?
 func (s *AutoAuditService) Init() {
 	s.initOnce.Do(func() {
 		if db.DB == nil {
@@ -39,11 +37,11 @@ func (s *AutoAuditService) Init() {
 		}
 		s.engine = rule_engine.NewRuleEngine(db.DB)
 
-		// 监控初始化
+		// 监控初始  ?
 		collector := metrics.NewCollector(config.Cfg.Audit.Metrics.WindowSeconds)
 		metrics.DefaultCollector = collector
 
-		// 模型初始化
+		// 模型初始  ?
 		var model ml.Model
 		if config.Cfg.Audit.Model.Enabled {
 			model = ml.NewLinearModel(config.Cfg.Audit.Model.Weights, config.Cfg.Audit.Model.Bias)
@@ -61,7 +59,7 @@ func (s *AutoAuditService) Init() {
 		// 插件管理器（可扩展）
 		plugins := decision.NewPluginManager()
 		// 注册黑名单插件
-		plugins.Register(decision.NewBlacklistPlugin([]string{"违禁词", "敏感词", "垃圾广告"}))
+		plugins.Register(decision.NewBlacklistPlugin([]string{"违禁品", "敏感词", "垃圾广告"}))
 
 		// 决策引擎初始化
 
@@ -74,7 +72,7 @@ func (s *AutoAuditService) Init() {
 			config.Cfg.Audit.Decision,
 		)
 
-		// 告警初始化
+		// 告警初始  ?
 		alertMgr := alert.NewManager(alert.Config{
 			Enabled:         config.Cfg.Audit.Alert.Enabled,
 			IntervalSeconds: config.Cfg.Audit.Alert.IntervalSeconds,
@@ -87,10 +85,9 @@ func (s *AutoAuditService) Init() {
 	})
 }
 
-
-// 审核结果结构体
+// 审核结果结构  ?
 type AuditResult struct {
-	Status int8   // 审核状态
+	Status int8   // 审核状  ?
 	Remark string // 审核备注
 }
 
@@ -104,7 +101,7 @@ func (s *AutoAuditService) AutoAudit(ctx context.Context, req *audit_kitex.Apply
 	// 1. 准备 Fact (解析 Content)
 	var fact rule_engine.Fact
 	if err := json.Unmarshal([]byte(req.Content), &fact); err != nil {
-		// 解析失败，直接转人工或拒绝
+		// 解析失败，直接转人工或拒  ?
 		return 0, err
 	}
 	// 注入基础信息
@@ -112,8 +109,8 @@ func (s *AutoAuditService) AutoAudit(ctx context.Context, req *audit_kitex.Apply
 	fact["submitter_id"] = req.SubmitterId
 	fact["biz_id"] = req.BizId
 
-	// 2. 执行决策引擎（规则+模型+动态阈值）
-	// 将 BizType 枚举转为字符串作为 Key (例如 "TICKET_ORDER")
+	// 2. 执行决策引擎（规  ?模型+动态阈值）
+	//   ?BizType 枚举转为字符串作  ?Key (例如 "TICKET_ORDER")
 	bizTypeKey := req.BizType.String()
 	if s.decisionEngine == nil {
 		s.Init()
@@ -128,11 +125,10 @@ func (s *AutoAuditService) AutoAudit(ctx context.Context, req *audit_kitex.Apply
 		Status: decisionResult.Status,
 		Remark: decisionResult.Remark,
 	}
-	// 预留扩展字段（模型评分/阈值等）
+	// 预留扩展字段（模型评  ?阈值等  ?
 	extraJSON := decision.BuildExtraJSON(decisionResult.Extra)
 
-
-	// 4. 持久化审核记录（事务）
+	// 4. 持久化审核记录（事务  ?
 	var auditMainID uint64
 	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		// 4.1 创建主表记录
@@ -148,8 +144,8 @@ func (s *AutoAuditService) AutoAudit(ctx context.Context, req *audit_kitex.Apply
 			AuditRemark:    result.Remark,
 			Extra:          extraJSON, // 记录模型评分/阈值等扩展信息
 
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
 
 		if result.Status != int8(audit_kitex.AuditStatus_PENDING) {
@@ -163,7 +159,7 @@ func (s *AutoAuditService) AutoAudit(ctx context.Context, req *audit_kitex.Apply
 		}
 		auditMainID = auditMain.ID
 
-		// 4.2 创建子表记录（保持原逻辑）
+		// 4.2 创建子表记录（保持原逻辑  ?
 		if err := s.createSubRecord(tx, auditMainID, req); err != nil {
 			return err
 		}

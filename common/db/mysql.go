@@ -2,10 +2,10 @@ package db
 
 import (
 	"database/sql"
-	"example_shop/common/config"
-	"example_shop/common/model/audit"
 	"fmt"
 	"log"
+	"piaowu/common/config"
+	"piaowu/common/model/audit"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -56,13 +56,18 @@ func MysqlInit() error {
 	SqlDB.SetMaxIdleConns(10)                // 最大空闲连接数
 	SqlDB.SetMaxOpenConns(100)               // 最大打开连接数
 	SqlDB.SetConnMaxLifetime(time.Hour * 30) // 连接最大存活时间
-
 	// 执行自动迁移（根据模型创建/更新表）
+	// 注：跳过历史业务表的自动迁移（存在历史数据兼容问题，需手动处理）
 	if err := DB.AutoMigrate(
 		&audit.AuditMain{},
-		&audit.AuditTicketOrder{},
-		&audit.AuditHotelOrder{},
+		// &audit.AuditTicketOrder{}, // 暂时跳过（历史数据）
+		// &audit.AuditHotelOrder{},  // 暂时跳过（历史数据）
+		&audit.AuditFlightOrder{}, // 新增：机票审核
+		&audit.AuditScenicOrder{}, // 新增：旅游门票审核
 		&audit.AuditOperationLog{},
+		&audit.AuditFlowConfig{},
+		&audit.AuditRule{},
+		&audit.RuleConfig{},
 	); err != nil {
 		return fmt.Errorf("自动迁移失败: %w", err)
 	}

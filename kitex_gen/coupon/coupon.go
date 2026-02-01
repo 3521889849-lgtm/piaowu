@@ -153,3 +153,4 @@ func (p *CouponServiceTestResult) String() string {
 var fieldIDToName_CouponServiceTestResult = map[int16]string{
 	0: "success",
 }
+

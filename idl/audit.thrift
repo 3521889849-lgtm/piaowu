@@ -7,7 +7,8 @@ enum BizType {
     TICKET_ORDER = 1,    // 车票订单
     HOTEL_ORDER = 2,     // 酒店订单
     MERCHANT_ENTRY = 3,  // 商户入驻
-    RESOURCE_UPLOAD = 4  // 资源上传（如图片/视频）
+    FLIGHT_ORDER = 4,    // 机票订单
+    SCENIC_ORDER = 5     // 旅游门票
 }
 
 // 审核类型枚举

@@ -2,7 +2,7 @@
 package couponservice
 
 import (
-	coupon "example_shop/kitex_gen/coupon"
+	coupon "piaowu/kitex_gen/coupon"
 	server "github.com/cloudwego/kitex/server"
 )
 
@@ -23,3 +23,4 @@ func NewServer(handler coupon.CouponService, opts ...server.Option) server.Serve
 func RegisterService(svr server.Server, handler coupon.CouponService, opts ...server.RegisterOption) error {
 	return svr.RegisterService(serviceInfo(), handler, opts...)
 }
+

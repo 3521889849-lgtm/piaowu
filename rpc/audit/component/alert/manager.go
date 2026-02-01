@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"example_shop/rpc/audit/component/metrics"
+	"piaowu/rpc/audit/component/metrics"
 	"log"
 	"net/http"
 	"time"
@@ -22,7 +22,7 @@ type Config struct {
 	WebhookURL      string
 }
 
-// Manager 告警管理器
+// Manager 告警管理
 // 周期性拉取监控快照，触发自动化报警
 
 type Manager struct {
@@ -41,7 +41,7 @@ func NewManager(cfg Config, collector *metrics.Collector, logger *log.Logger) *M
 	return &Manager{cfg: cfg, collector: collector, logger: logger}
 }
 
-// Start 启动告警检测
+// Start 启动告警检查
 func (m *Manager) Start(ctx context.Context) {
 	if m == nil || m.collector == nil || !m.cfg.Enabled {
 		return
@@ -91,3 +91,4 @@ func (m *Manager) checkAndAlert(s metrics.Snapshot) {
 		_, _ = http.Post(m.cfg.WebhookURL, "application/json", bytes.NewReader(b))
 	}
 }
+

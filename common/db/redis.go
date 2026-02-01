@@ -2,8 +2,8 @@ package db
 
 import (
 	"context"
-	"example_shop/common/config"
 	"fmt"
+	"piaowu/common/config"
 
 	"github.com/redis/go-redis/v9"
 )

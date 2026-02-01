@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-
 func TestRuleEngine_Execute(t *testing.T) {
 	// 初始化引擎 (手动注入规则)
 	re := &RuleEngine{
@@ -68,7 +67,6 @@ func TestRuleEngine_Execute(t *testing.T) {
 		return rules[i].Priority > rules[j].Priority
 	})
 	re.rules["TICKET_ORDER"] = rules
-
 
 	tests := []struct {
 		name       string

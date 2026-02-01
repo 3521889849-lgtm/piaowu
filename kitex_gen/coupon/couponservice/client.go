@@ -4,7 +4,7 @@ package couponservice
 
 import (
 	"context"
-	coupon "example_shop/kitex_gen/coupon"
+	coupon "piaowu/kitex_gen/coupon"
 	client "github.com/cloudwego/kitex/client"
 	callopt "github.com/cloudwego/kitex/client/callopt"
 )
@@ -47,3 +47,4 @@ func (p *kCouponServiceClient) Test(ctx context.Context, req *coupon.EmptyReq, c
 	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
 	return p.kClient.Test(ctx, req)
 }
+

@@ -1,0 +1,49 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "审核任务列表",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/apply/apply",
+			"style": {
+				"navigationBarTitleText": "提交审核申请"
+			}
+		},
+		{
+			"path": "pages/detail/detail",
+			"style": {
+				"navigationBarTitleText": "审核详情"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "审核管理系统",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#7A7E83",
+		"selectedColor": "#3cc51f",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "任务列表",
+				"iconPath": "static/list.png",
+				"selectedIconPath": "static/list_active.png"
+			},
+			{
+				"pagePath": "pages/apply/apply",
+				"text": "提交申请",
+				"iconPath": "static/add.png",
+				"selectedIconPath": "static/add_active.png"
+			}
+		]
+	}
+}

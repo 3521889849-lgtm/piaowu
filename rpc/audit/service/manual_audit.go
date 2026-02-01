@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"example_shop/common/db"
-	"example_shop/common/model/audit"
-	audit_kitex "example_shop/kitex_gen/audit"
-	"example_shop/rpc/audit/component/metrics"
+	"piaowu/common/db"
+	"piaowu/common/model/audit"
+	audit_kitex "piaowu/kitex_gen/audit"
+	"piaowu/rpc/audit/component/metrics"
 	"strconv"
 	"time"
 
 	"github.com/cloudwego/kitex/pkg/klog"
 	"gorm.io/gorm"
 )
-
 
 type ManualAuditService struct{}
 
@@ -308,4 +307,3 @@ func statusToDecision(status audit_kitex.AuditStatus) metrics.DecisionType {
 		return metrics.DecisionReview
 	}
 }
-

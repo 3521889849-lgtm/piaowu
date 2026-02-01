@@ -1,0 +1,198 @@
+{
+  "info": {
+    "name": "酒店审核接口测试",
+    "description": "酒店审核系统API测试集合（仅包含查询和处理接口）",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. 查询审核详情",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/audit/:audit_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "audit", ":audit_id"],
+          "variable": [
+            {
+              "key": "audit_id",
+              "value": "1",
+              "description": "审核ID"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. 查询审核列表-酒店订单",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/audit/list?business_type=2&audit_status=1&page=1&page_size=10",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "audit", "list"],
+          "query": [
+            {
+              "key": "business_type",
+              "value": "2",
+              "description": "业务类型：2=酒店订单"
+            },
+            {
+              "key": "audit_status",
+              "value": "1",
+              "description": "审核状态：1=待审核"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. 查询审核列表-酒店入驻",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/audit/list?business_type=3&page=1&page_size=10",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "audit", "list"],
+          "query": [
+            {
+              "key": "business_type",
+              "value": "3",
+              "description": "业务类型：3=酒店入驻"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. 查询所有待审核任务",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/audit/list?audit_status=1&page=1&page_size=20",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "audit", "list"],
+          "query": [
+            {
+              "key": "audit_status",
+              "value": "1",
+              "description": "审核状态：1=待审核"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "20"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. 审核通过",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-ID",
+            "value": "2001"
+          },
+          {
+            "key": "X-User-Name",
+            "value": "审核员王五"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"audit_id\": 1,\n  \"action\": \"approve\",\n  \"audit_remark\": \"审核通过，订单信息无误\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/audit/process",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "audit", "process"]
+        }
+      }
+    },
+    {
+      "name": "6. 审核驳回",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-ID",
+            "value": "2001"
+          },
+          {
+            "key": "X-User-Name",
+            "value": "审核员王五"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"audit_id\": 1,\n  \"action\": \"reject\",\n  \"audit_remark\": \"订单信息不完整，请补充完整后重新提交\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/audit/process",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "audit", "process"]
+        }
+      }
+    },
+    {
+      "name": "7. 健康检查",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["health"]
+        }
+      }
+    }
+  ]
+}

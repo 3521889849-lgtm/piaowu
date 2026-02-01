@@ -2,7 +2,7 @@ package rule_engine
 
 import (
 	"encoding/json"
-	"example_shop/common/model/audit"
+	"piaowu/common/model/audit"
 	"fmt"
 	"log"
 	"reflect"
@@ -52,7 +52,6 @@ func (re *RuleEngine) Reload() error {
 		}
 
 		rule := &Rule{
-
 			ID:         cfg.ID,
 			BizType:    cfg.BizType,
 			RuleName:   cfg.RuleName,
@@ -249,7 +248,6 @@ func compareWithExpr(factVal interface{}, expr *RuleExpression) bool {
 	return false
 }
 
-
 func toFloat(v interface{}) (float64, bool) {
 	val := reflect.ValueOf(v)
 	switch val.Kind() {
@@ -262,3 +260,4 @@ func toFloat(v interface{}) (float64, bool) {
 	}
 	return 0, false
 }
+

@@ -1,0 +1,11 @@
+{
+	"name": "audit-system",
+	"version": "1.0.0",
+	"description": "Audit System Frontend",
+	"main": "main.js",
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+	}
+}

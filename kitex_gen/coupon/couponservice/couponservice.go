@@ -5,7 +5,7 @@ package couponservice
 import (
 	"context"
 	"errors"
-	coupon "example_shop/kitex_gen/coupon"
+	coupon "piaowu/kitex_gen/coupon"
 	client "github.com/cloudwego/kitex/client"
 	kitex "github.com/cloudwego/kitex/pkg/serviceinfo"
 )
@@ -123,3 +123,4 @@ func (p *kClient) Test(ctx context.Context, req *coupon.EmptyReq) (r *coupon.Bas
 	}
 	return _result.GetSuccess(), nil
 }
+

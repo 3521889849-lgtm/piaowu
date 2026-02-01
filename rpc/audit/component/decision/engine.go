@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"example_shop/common/config"
-	"example_shop/rpc/audit/component/metrics"
-	"example_shop/rpc/audit/component/ml"
-	"example_shop/rpc/audit/component/rule_engine"
-	"example_shop/rpc/audit/component/threshold"
+	"piaowu/common/config"
+	"piaowu/rpc/audit/component/metrics"
+	"piaowu/rpc/audit/component/ml"
+	"piaowu/rpc/audit/component/rule_engine"
+	"piaowu/rpc/audit/component/threshold"
 	"fmt"
 	"math"
 	"time"
@@ -26,7 +26,6 @@ import (
 //
 // 注意：Extra 字段用于持久化模型评分与阈值信息，便于事后评估与监控
 // 所有关键字段均为中文注释，满足可维护性要求
-
 type Result struct {
 	Status      int8
 	Remark      string
@@ -50,7 +49,6 @@ type Result struct {
 
 // RuleExecutor 规则执行接口（便于测试与扩展）
 // 任何实现 Execute 方法的对象都可接入决策引擎
-
 type RuleExecutor interface {
 	Execute(bizType string, fact rule_engine.Fact) rule_engine.Result
 }
@@ -217,7 +215,7 @@ func mapActionToStatus(action rule_engine.RuleAction) int8 {
 // 关键算法说明：
 // - 字符串可尝试转为数字（如金额/次数等）
 // - 布尔转为 0/1
-// - 缺失值默认 0
+// - 缺失值默认为 0
 // 该策略保证模型输入稳定，避免因空值导致评分失败
 func extractNumericFeatures(fact rule_engine.Fact, keys []string) map[string]float64 {
 	features := make(map[string]float64, len(keys))
@@ -287,3 +285,4 @@ func roundFloat(v float64, scale int) float64 {
 	p := math.Pow10(scale)
 	return math.Round(v*p) / p
 }
+

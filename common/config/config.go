@@ -9,7 +9,6 @@ type Config struct {
 	Audit
 }
 
-
 type Mysql struct {
 	Host     string
 	Port     int
@@ -45,10 +44,10 @@ type Audit struct {
 // AuditDecision 决策策略配置
 
 type AuditDecision struct {
-	ModelEnabled          bool
+	ModelEnabled           bool
 	DefaultReviewThreshold float64
-	RejectGap             float64
-	FeatureKeys           []string
+	RejectGap              float64
+	FeatureKeys            []string
 }
 
 // AuditModel 模型参数配置
@@ -85,4 +84,3 @@ type AuditAlert struct {
 	MinThroughput   float64
 	WebhookURL      string
 }
-

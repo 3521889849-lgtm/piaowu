@@ -10,7 +10,7 @@ import (
 type AuditHotelOrder struct {
 	ID              uint64         `gorm:"primaryKey;autoIncrement;comment:酒店审核明细主键ID"`
 	AuditMainId     uint64         `gorm:"not null;index:idx_audit_main_id;comment:关联审核主表ID"`
-	BusinessRelId   uint64         `gorm:"not null;index:idx_business_rel_id;comment:关联业务ID（订单=酒店订单ID，入驻=酒店ID）"`
+	BusinessRelId   uint64         `gorm:"not null;index:idx_business_rel_id;comment:关联业务ID（订单ID或酒店ID）"`
 	HotelId         uint64         `gorm:"not null;comment:酒店ID"`
 	HotelName       string         `gorm:"type:varchar(100);not null;comment:酒店名称"`
 	HotelAddress    string         `gorm:"type:varchar(255);not null;comment:酒店地址"`
@@ -27,3 +27,4 @@ type AuditHotelOrder struct {
 	UpdatedAt       time.Time      `gorm:"comment:更新时间"`
 	DeletedAt       gorm.DeletedAt `gorm:"softDelete:delete_at;comment:软删除时间"`
 }
+

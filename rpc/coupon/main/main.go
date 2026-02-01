@@ -2,13 +2,13 @@ package main
 
 import (
 	"context" // 必须导入，Test方法要用到ctx参数
-	"example_shop/kitex_gen/coupon"
-	"example_shop/kitex_gen/coupon/couponservice"
 	"net"
+	"piaowu/kitex_gen/coupon"
+	"piaowu/kitex_gen/coupon/couponservice"
 
 	"log"
 
-	_ "example_shop/common/init"
+	_ "piaowu/common/init"
 
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
@@ -41,8 +41,8 @@ func main() {
 		}),
 	)
 
-	log.Println("✅ 极简空服务启动成功！")
+	log.Println("🚀 极简空服务启动成功！")
 	if err := svr.Run(); err != nil {
-		log.Println("启动失败：", err)
+		log.Println("启动失败:", err)
 	}
 }

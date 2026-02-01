@@ -6,9 +6,9 @@ import (
 	"sync"
 )
 
-// Config 动态阈值配置
-// Percentile 取值范围(0,1)，例如 0.9 表示取 90 分位
-// WindowSize 为窗口大小，越大越稳定
+// Config 动态阈值配  ?
+// Percentile 取值范  ?0,1)，例  ?0.9 表示  ?90 分位
+// WindowSize 为窗口大小，越大越稳  ?
 
 type Config struct {
 	WindowSize int
@@ -19,10 +19,10 @@ type Config struct {
 }
 
 // Manager 动态阈值管理器
-// 关键算法说明：
+// 关键算法说明  ?
 // - 使用滑动窗口保存近期评分
-// - 基于分位数进行阈值计算，避免被极端值干扰
-// - 最终阈值通过 Min/Max 进行夹断，防止漂移过大
+// - 基于分位数进行阈值计算，避免被极端值干  ?
+// - 最终阈值通过 Min/Max 进行夹断，防止漂移过  ?
 
 type Manager struct {
 	mu     sync.RWMutex
@@ -45,7 +45,7 @@ func NewManager(cfg Config) *Manager {
 	}
 }
 
-// Update 写入最新评分
+// Update 写入最新评  ?
 func (m *Manager) Update(score float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -56,7 +56,7 @@ func (m *Manager) Update(score float64) {
 	}
 }
 
-// Threshold 计算动态阈值
+// Threshold 计算动态阈  ?
 func (m *Manager) Threshold() float64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -97,3 +97,4 @@ func clamp(v, min, max float64) float64 {
 	}
 	return v
 }
+

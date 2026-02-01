@@ -5,7 +5,6 @@ import "regexp"
 // RuleAction 规则动作
 type RuleAction string
 
-
 const (
 	ActionPass   RuleAction = "Pass"
 	ActionReject RuleAction = "Reject"
@@ -31,10 +30,9 @@ type RuleExpression struct {
 	SubRules []*RuleExpression `json:"sub_rules,omitempty"` // 子规则 (仅组合节点)
 
 	// 预编译字段（运行期使用，不入库）
-	regex *regexp.Regexp       `json:"-"`
-	inSet map[string]struct{}  `json:"-"`
+	regex *regexp.Regexp      `json:"-"`
+	inSet map[string]struct{} `json:"-"`
 }
-
 
 // Fact 审核事实数据
 type Fact map[string]interface{}
@@ -45,3 +43,4 @@ type Result struct {
 	Action  RuleAction
 	Reason  string // 规则名称或失败原因
 }
+
