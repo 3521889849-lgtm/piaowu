@@ -34,7 +34,7 @@ func MysqlInit() error {
 
 	// 修复gorm.Open的拼写，添加日志配置（便于调试）
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info), // 打印SQL日志
+		Logger: logger.Default.LogMode(logger.Error), // 生产环境建议Error，避免日志刷屏
 	})
 	if err != nil {
 		// 连接失败时返回具体错误

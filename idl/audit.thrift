@@ -110,10 +110,71 @@ struct AuditLog {
     4: string create_time        // 操作时间
 }
 
+// 审核详情子结构
+struct AuditTicketOrder {
+    1: i64 ticket_order_id
+    2: i32 ticket_type
+    3: string ticket_type_text
+    4: string departure_station
+    5: string arrival_station
+    6: string departure_time
+    7: string passenger_name
+    8: string passenger_id_card
+    9: double order_amount
+    10: string apply_reason
+}
+
+struct AuditHotelOrder {
+    1: i64 hotel_id
+    2: string hotel_name
+    3: string hotel_address
+    4: string room_type
+    5: string check_in_time
+    6: string check_out_time
+    7: string guest_name
+    8: string guest_id_card
+    9: double order_amount
+    10: string apply_reason
+}
+
+struct AuditFlightOrder {
+    1: i64 flight_order_id
+    2: i32 flight_type
+    3: string flight_no
+    4: string airline
+    5: string departure_airport
+    6: string arrival_airport
+    7: string departure_time
+    8: string arrival_time
+    9: string cabin_class
+    10: string passenger_name
+    11: double order_amount
+    12: string apply_reason
+}
+
+struct AuditScenicOrder {
+    1: i64 scenic_order_id
+    2: i32 ticket_type
+    3: string scenic_name
+    4: string scenic_address
+    5: string ticket_name
+    6: string visit_date
+    7: i32 ticket_quantity
+    8: double unit_price
+    9: double order_amount
+    10: string contact_name
+    11: string contact_phone
+    12: string apply_reason
+}
+
 struct AuditDetail {
     1: AuditTask task_info,      // 任务基本信息
     2: list<AuditLog> logs,      // 流转日志
-    3: string audit_result       // 最终审核结果说明
+    3: string audit_result,      // 最终审核结果说明
+    4: optional AuditTicketOrder ticket_order,
+    5: optional AuditHotelOrder hotel_order,
+    6: optional AuditFlightOrder flight_order,
+    7: optional AuditScenicOrder scenic_order
 }
 
 struct GetAuditRecordResp {

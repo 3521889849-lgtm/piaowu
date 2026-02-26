@@ -30,10 +30,10 @@ func (m *fakeModel) Score(ctx context.Context, features map[string]float64) (flo
 
 func TestEngine_Decide(t *testing.T) {
 	cfg := config.AuditDecision{
-		ModelEnabled:          true,
+		ModelEnabled:           true,
 		DefaultReviewThreshold: 0.6,
-		RejectGap:             0.2,
-		FeatureKeys:           []string{"order_amount"},
+		RejectGap:              0.2,
+		FeatureKeys:            []string{"order_amount"},
 	}
 
 	thresholdMgr := threshold.NewManager(threshold.Config{Default: 0.6, Percentile: 0.9, WindowSize: 10})
@@ -65,4 +65,3 @@ func TestEngine_Decide(t *testing.T) {
 		t.Fatalf("want pass, got %v", res3.FinalAction)
 	}
 }
-

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"piaowu/common/config"
-	"piaowu/common/db"
 	"fmt"
 	"log"
+	"piaowu/common/config"
+	"piaowu/common/db"
 
 	"gorm.io/gorm"
 )
@@ -25,11 +25,11 @@ func main() {
 		// 审核主表索引
 		"CREATE INDEX idx_created_at ON audit_mains(created_at DESC)",
 		"CREATE INDEX idx_deleted_at_main ON audit_mains(deleted_at)",
-		
+
 		// 车票订单表索  ?
 		"CREATE INDEX idx_audit_main_id_ticket ON audit_ticket_orders(audit_main_id)",
 		"CREATE INDEX idx_deleted_at_ticket ON audit_ticket_orders(deleted_at)",
-		
+
 		// 酒店订单表索  ?
 		"CREATE INDEX idx_audit_main_id_hotel ON audit_hotel_orders(audit_main_id)",
 		"CREATE INDEX idx_deleted_at_hotel ON audit_hotel_orders(deleted_at)",
@@ -44,15 +44,13 @@ func main() {
 		}
 	}
 
-	fmt.Println("\n索引添加完成  ?)
-	
 	// 查看索引信息
 	fmt.Println("\n=== 审核主表索引 ===")
 	showIndexes(db.DB, "audit_mains")
-	
+
 	fmt.Println("\n=== 车票订单表索  ?===")
 	showIndexes(db.DB, "audit_ticket_orders")
-	
+
 	fmt.Println("\n=== 酒店订单表索  ?===")
 	showIndexes(db.DB, "audit_hotel_orders")
 }
@@ -65,12 +63,11 @@ func showIndexes(database *gorm.DB, tableName string) {
 		SeqInIndex int    `gorm:"column:Seq_in_index"`
 		ColumnName string `gorm:"column:Column_name"`
 	}
-	
+
 	var indexes []IndexInfo
 	database.Raw("SHOW INDEX FROM " + tableName).Scan(&indexes)
-	
+
 	for _, idx := range indexes {
 		fmt.Printf("  - %s (%s)\n", idx.KeyName, idx.ColumnName)
 	}
 }
-

@@ -236,11 +236,133 @@ func (s *AutoAuditService) createSubRecord(tx *gorm.DB, mainID uint64, req *audi
 			AuditMainId:   mainID,
 			BusinessRelId: orderID,
 			HotelName:     getString(info, "hotel_name"),
+			HotelAddress:  getString(info, "hotel_address"),
 			GuestName:     getString(info, "guest_name"),
 			GuestIdCard:   getString(info, "guest_id_card"),
 			CreatedAt:     time.Now(),
 		}
 		return tx.Create(hotelOrder).Error
+
+	case audit_kitex.BizType_FLIGHT_ORDER:
+		// 处理机票订单审核数据
+		var info map[string]interface{}
+		json.Unmarshal([]byte(req.Content), &info)
+
+		// 解析机票订单ID，JSON中数字类型默认为float64
+		orderID := uint64(0)
+		if v, ok := info["flight_order_id"].(float64); ok {
+			orderID = uint64(v)
+		}
+
+		// 解析航班类型（1=国内航班, 2=国际航班）
+		flightType := int8(1) // 默认为国内航班
+		if v, ok := info["flight_type"].(float64); ok {
+			flightType = int8(v)
+		}
+
+		// 构建机票审核明细记录
+		flightOrder := &audit.AuditFlightOrder{
+			AuditMainId:      mainID,                               // 关联审核主表ID
+			FlightOrderId:    orderID,                              // 机票订单ID
+			FlightType:       flightType,                           // 航班类型
+			FlightNo:         getString(info, "flight_no"),         // 航班号（如CA1234）
+			Airline:          getString(info, "airline"),           // 航空公司名称
+			DepartureAirport: getString(info, "departure_airport"), // 出发机场
+			ArrivalAirport:   getString(info, "arrival_airport"),   // 到达机场
+			CabinClass:       getString(info, "cabin_class"),       // 舱位等级（经济舱/商务舱/头等舱）
+			PassengerName:    getString(info, "passenger_name"),    // 乘客姓名
+			PassengerIdCard:  getString(info, "passenger_id_card"), // 乘客身份证号
+			PassengerPhone:   getString(info, "passenger_phone"),   // 乘客联系电话
+			ApplyReason:      getString(info, "apply_reason"),      // 审核申请原因
+			FlightExtra:      "{}",                                 // 扩展字段（JSON格式）
+			CreatedAt:        time.Now(),
+		}
+
+		// 解析起飞时间（尝试标准时间格式）
+		if tStr, ok := info["departure_time"].(string); ok {
+			if t, err := time.Parse("2006-01-02 15:04:05", tStr); err == nil {
+				flightOrder.DepartureTime = t
+			}
+		}
+
+		// 解析降落时间
+		if tStr, ok := info["arrival_time"].(string); ok {
+			if t, err := time.Parse("2006-01-02 15:04:05", tStr); err == nil {
+				flightOrder.ArrivalTime = t
+			}
+		}
+
+		// 解析订单金额
+		if amt, ok := info["order_amount"].(float64); ok {
+			flightOrder.OrderAmount = amt
+		}
+
+		// 插入数据库
+		return tx.Create(flightOrder).Error
+
+	case audit_kitex.BizType_SCENIC_ORDER:
+		// 处理旅游门票订单审核数据
+		var info map[string]interface{}
+		json.Unmarshal([]byte(req.Content), &info)
+
+		// 解析门票订单ID
+		orderID := uint64(0)
+		if v, ok := info["scenic_order_id"].(float64); ok {
+			orderID = uint64(v)
+		}
+
+		// 解析门票类型（1=景区门票, 2=演出票, 3=展览票, 4=游乐园票）
+		ticketType := int8(1) // 默认为景区门票
+		if v, ok := info["ticket_type"].(float64); ok {
+			ticketType = int8(v)
+		}
+
+		// 解析门票数量
+		ticketQty := 0
+		if v, ok := info["ticket_quantity"].(float64); ok {
+			ticketQty = int(v)
+		}
+
+		// 构建旅游门票审核明细记录
+		scenicOrder := &audit.AuditScenicOrder{
+			AuditMainId:    mainID,                             // 关联审核主表ID
+			ScenicOrderId:  orderID,                            // 门票订单ID
+			TicketType:     ticketType,                         // 门票类型
+			ScenicName:     getString(info, "scenic_name"),     // 景区/场馆名称
+			ScenicAddress:  getString(info, "scenic_address"),  // 景区地址
+			TicketName:     getString(info, "ticket_name"),     // 门票名称（如成人票、儿童票）
+			TicketQuantity: ticketQty,                          // 门票数量
+			ContactName:    getString(info, "contact_name"),    // 联系人姓名
+			ContactPhone:   getString(info, "contact_phone"),   // 联系人电话
+			ContactIdCard:  getString(info, "contact_id_card"), // 联系人身份证号
+			ApplyReason:    getString(info, "apply_reason"),    // 审核申请原因
+			ScenicExtra:    "{}",                               // 扩展字段（JSON格式）
+			CreatedAt:      time.Now(),
+		}
+
+		// 解析游玩日期（支持两种格式：纯日期 或 日期+时间）
+		if tStr, ok := info["visit_date"].(string); ok {
+			// 先尝试纯日期格式（YYYY-MM-DD）
+			if t, err := time.Parse("2006-01-02", tStr); err == nil {
+				scenicOrder.VisitDate = t
+			} else if t, err := time.Parse("2006-01-02 15:04:05", tStr); err == nil {
+				// 如果失败则尝试日期时间格式
+				scenicOrder.VisitDate = t
+			}
+		}
+
+		// 解析单价
+		if amt, ok := info["unit_price"].(float64); ok {
+			scenicOrder.UnitPrice = amt
+		}
+
+		// 解析订单总金额
+		if amt, ok := info["order_amount"].(float64); ok {
+			scenicOrder.OrderAmount = amt
+		}
+
+		// 插入数据库
+		return tx.Create(scenicOrder).Error
 	}
 	return nil
 }

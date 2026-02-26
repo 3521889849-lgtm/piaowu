@@ -103,7 +103,7 @@ const ApplyAudit: React.FC = () => {
       'flight_order_id', 'flight_type', 'flight_no', 'airline',
       'departure_airport', 'arrival_airport', 'arrival_time', 'cabin_class',
       'scenic_order_id', 'scenic_ticket_type', 'scenic_name', 'scenic_address',
-      'ticket_name', 'visit_date', 'ticket_quantity', 'unit_price', 
+      'ticket_name', 'visit_date', 'ticket_quantity', 'unit_price',
       'contact_name', 'contact_phone'
     ]);
   };
@@ -159,9 +159,11 @@ const ApplyAudit: React.FC = () => {
   };
 
   return (
-    <Card 
+    <Card
       title={<><FileAddOutlined /> 提交审核申请</>}
       extra={businessType && <Button type="link" size="small" onClick={loadTemplate}>填充示例</Button>}
+      bordered={false}
+      className="glass-card"
     >
       <Form form={form} layout="vertical" onFinish={onFinish} style={{ maxWidth: 700 }}>
         {/* 基础信息 */}
@@ -181,7 +183,7 @@ const ApplyAudit: React.FC = () => {
             </Form.Item>
           </Col>
         </Row>
-        
+
         <Form.Item name="apply_reason" label="申请原因" rules={[{ required: true, message: '请输入' }]}>
           <Input.TextArea rows={2} placeholder="申请原因" maxLength={255} showCount />
         </Form.Item>

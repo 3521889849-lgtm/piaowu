@@ -18,18 +18,18 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f0f2f5' }}>
-      <Card title="登录审核管理系统" style={{ width: 350 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'transparent' }}>
+      <Card title="登录审核管理系统" style={{ width: 350 }} className="glass-card">
         <Form onFinish={onFinish} layout="vertical">
-          <Form.Item 
-            name="username" 
+          <Form.Item
+            name="username"
             label="用户名"
             rules={[{ required: true, message: '请输入用户名' }]}
           >
             <Input placeholder="请输入用户名 (admin)" />
           </Form.Item>
-          <Form.Item 
-            name="password" 
+          <Form.Item
+            name="password"
             label="密码"
             rules={[{ required: true, message: '请输入密码' }]}
           >

@@ -77,7 +77,7 @@ func (s *ManualAuditService) FetchManualTasks(ctx context.Context, req *audit_ki
 	}
 	offset := (pageNum - 1) * pageSize
 
-	if err := query.Order("created_at desc").Offset(offset).Limit(pageSize).Find(&auditMains).Error; err != nil {
+	if err := query.Order("id desc").Offset(offset).Limit(pageSize).Find(&auditMains).Error; err != nil {
 		klog.Errorf("Query tasks failed: %v", err)
 		resp.BaseResp.Code = 500
 		resp.BaseResp.Msg = "查询失败"
@@ -246,8 +246,98 @@ func (s *ManualAuditService) GetAuditRecord(ctx context.Context, req *audit_kite
 			ApplyTime:   auditMain.CreatedAt.Format(time.RFC3339),
 			Status:      audit_kitex.AuditStatus(auditMain.AuditStatus),
 		},
-		AuditResult_: auditMain.AuditRemark,
 	}
+	resp.Detail = detail
+
+	// 补充业务详情数据 - 根据业务类型查询对应的子表记录
+	switch audit_kitex.BizType(auditMain.BusinessType) {
+	case audit_kitex.BizType_TICKET_ORDER:
+		// 查询车票订单详情
+		var order audit.AuditTicketOrder
+		if err := db.DB.Where("audit_main_id = ?", auditMain.ID).First(&order).Error; err == nil {
+			detail.TicketOrder = &audit_kitex.AuditTicketOrder{
+				TicketOrderId:    int64(order.TicketOrderId),
+				TicketType:       int32(order.TicketType),
+				TicketTypeText:   getTicketTypeName(order.TicketType), // 转换为文本（如"高铁"）
+				DepartureStation: order.DepartureStation,
+				ArrivalStation:   order.ArrivalStation,
+				DepartureTime:    order.DepartureTime.Format("2006-01-02 15:04:05"),
+				PassengerName:    order.PassengerName,
+				PassengerIdCard:  order.PassengerIdCard,
+				OrderAmount:      order.OrderAmount,
+				ApplyReason:      order.ApplyReason,
+			}
+		}
+
+	case audit_kitex.BizType_HOTEL_ORDER:
+		// 查询酒店订单详情
+		var order audit.AuditHotelOrder
+		if err := db.DB.Where("audit_main_id = ?", auditMain.ID).First(&order).Error; err == nil {
+			// 处理可能为空的时间字段
+			checkIn := ""
+			if order.CheckInTime != nil {
+				checkIn = order.CheckInTime.Format("2006-01-02 15:04:05")
+			}
+			checkOut := ""
+			if order.CheckOutTime != nil {
+				checkOut = order.CheckOutTime.Format("2006-01-02 15:04:05")
+			}
+			detail.HotelOrder = &audit_kitex.AuditHotelOrder{
+				HotelId:      int64(order.HotelId),
+				HotelName:    order.HotelName,
+				HotelAddress: order.HotelAddress,
+				RoomType:     order.RoomType,
+				CheckInTime:  checkIn,
+				CheckOutTime: checkOut,
+				GuestName:    order.GuestName,
+				GuestIdCard:  order.GuestIdCard,
+				OrderAmount:  order.OrderAmount,
+				ApplyReason:  order.ApplyReason,
+			}
+		}
+
+	case audit_kitex.BizType_FLIGHT_ORDER:
+		// 查询机票订单详情
+		var order audit.AuditFlightOrder
+		if err := db.DB.Where("audit_main_id = ?", auditMain.ID).First(&order).Error; err == nil {
+			detail.FlightOrder = &audit_kitex.AuditFlightOrder{
+				FlightOrderId:    int64(order.FlightOrderId),
+				FlightType:       int32(order.FlightType),
+				FlightNo:         order.FlightNo,         // 航班号（如CA1234）
+				Airline:          order.Airline,          // 航空公司
+				DepartureAirport: order.DepartureAirport, // 出发机场
+				ArrivalAirport:   order.ArrivalAirport,   // 到达机场
+				DepartureTime:    order.DepartureTime.Format("2006-01-02 15:04:05"),
+				ArrivalTime:      order.ArrivalTime.Format("2006-01-02 15:04:05"),
+				CabinClass:       order.CabinClass, // 舱位等级
+				PassengerName:    order.PassengerName,
+				OrderAmount:      order.OrderAmount,
+				ApplyReason:      order.ApplyReason,
+			}
+		}
+
+	case audit_kitex.BizType_SCENIC_ORDER:
+		// 查询旅游门票订单详情
+		var order audit.AuditScenicOrder
+		if err := db.DB.Where("audit_main_id = ?", auditMain.ID).First(&order).Error; err == nil {
+			detail.ScenicOrder = &audit_kitex.AuditScenicOrder{
+				ScenicOrderId:  int64(order.ScenicOrderId),
+				TicketType:     int32(order.TicketType),
+				ScenicName:     order.ScenicName,                     // 景区名称
+				ScenicAddress:  order.ScenicAddress,                  // 景区地址
+				TicketName:     order.TicketName,                     // 门票名称（如成人票）
+				VisitDate:      order.VisitDate.Format("2006-01-02"), // 游玩日期
+				TicketQuantity: int32(order.TicketQuantity),          // 门票数量
+				UnitPrice:      order.UnitPrice,                      // 单价
+				OrderAmount:    order.OrderAmount,                    // 总金额
+				ContactName:    order.ContactName,                    // 联系人
+				ContactPhone:   order.ContactPhone,                   // 联系电话
+				ApplyReason:    order.ApplyReason,
+			}
+		}
+	}
+
+	detail.AuditResult_ = auditMain.AuditRemark
 
 	// 转换日志
 	for _, l := range logs {
@@ -301,9 +391,25 @@ func statusToDecision(status audit_kitex.AuditStatus) metrics.DecisionType {
 	switch status {
 	case audit_kitex.AuditStatus_PASSED:
 		return metrics.DecisionPass
-	case audit_kitex.AuditStatus_REJECTED:
+	case audit_kitex.AuditStatus_REJECTED: // Fixed enum name from REJECT to REJECTED based on Thrift
 		return metrics.DecisionReject
 	default:
 		return metrics.DecisionReview
 	}
+}
+
+// getTicketTypeName 将车票类型代码转换为中文名称
+// 参数: t - 车票类型代码（1=高铁, 2=动车, 3=普通火车, 4=汽车票）
+// 返回: 车票类型的中文名称，未知类型返回"未知"
+func getTicketTypeName(t int8) string {
+	m := map[int8]string{
+		1: "高铁",
+		2: "动车",
+		3: "普通火车",
+		4: "汽车票",
+	}
+	if v, ok := m[t]; ok {
+		return v
+	}
+	return "未知"
 }

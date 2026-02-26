@@ -42,4 +42,3 @@ func (s *AuditServiceImpl) ProcessManualAudit(ctx context.Context, req *audit.Pr
 func (s *AuditServiceImpl) GetAuditRecord(ctx context.Context, req *audit.GetAuditRecordReq) (resp *audit.GetAuditRecordResp, err error) {
 	return service.ManualAuditSvc.GetAuditRecord(ctx, req)
 }
-

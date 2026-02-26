@@ -50,5 +50,3 @@ func (p *BlacklistPlugin) AfterDecision(ctx context.Context, result *Result) err
 	}
 	return nil
 }
-
-

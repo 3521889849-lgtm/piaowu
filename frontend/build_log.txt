@@ -1,0 +1,13 @@
+﻿src/pages/ApplyAudit.tsx(13,9): error TS6133: 'token' is declared but its value is never read.
+src/pages/ApplyAudit.tsx(195,22): error TS2322: Type '"left"' is not assignable to type 'Orientation | undefined'.
+src/pages/ApplyAudit.tsx(248,22): error TS2322: Type '"left"' is not assignable to type 'Orientation | undefined'.
+src/pages/ApplyAudit.tsx(302,22): error TS2322: Type '"left"' is not assignable to type 'Orientation | undefined'.
+src/pages/ApplyAudit.tsx(331,22): error TS2322: Type '"left"' is not assignable to type 'Orientation | undefined'.
+src/pages/ApplyAudit.tsx(407,22): error TS2322: Type '"left"' is not assignable to type 'Orientation | undefined'.
+src/pages/AuditDashboard.tsx(325,40): error TS6133: 'entry' is declared but its value is never read.
+src/pages/AuditList.tsx(4,38): error TS6133: 'Skeleton' is declared but its value is never read.
+src/pages/AuditList.tsx(65,10): error TS6133: 'detailLoading' is declared but its value is never read.
+src/pages/AuditList.tsx(146,32): error TS6133: 'record' is declared but its value is never read.
+src/pages/AuditList.tsx(264,19): error TS2353: Object literal may only specify known properties, and 'content' does not exist in type 'ModalStylesType'.
+src/pages/AuditList.tsx(314,19): error TS2353: Object literal may only specify known properties, and 'content' does not exist in type 'ModalStylesType'.
+src/pages/AuditList.tsx(347,24): error TS2322: Type '"left"' is not assignable to type 'Orientation | undefined'.

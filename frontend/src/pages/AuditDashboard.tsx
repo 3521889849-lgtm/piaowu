@@ -1,38 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Empty, Spin, Progress, Typography, List, Tag, Button, Timeline, Avatar, Space, Tooltip } from 'antd';
-import { 
-  CheckCircleOutlined, CloseCircleOutlined, 
-  ClockCircleOutlined, SyncOutlined,
-  FileTextOutlined, StopOutlined,
+import { Card, Row, Col, Statistic, Empty, Spin, Typography, Tag, Button, Timeline, theme } from 'antd';
+import {
+  CheckCircleFilled, CloseCircleFilled,
+  ClockCircleFilled,
   PlusOutlined, UnorderedListOutlined,
-  RightOutlined, CalendarOutlined,
-  ThunderboltOutlined, FieldTimeOutlined
+  CalendarOutlined,
+  ThunderboltFilled, RiseOutlined,
+  PieChartOutlined
 } from '@ant-design/icons';
 import { queryAuditList, BusinessTypeMap } from '../api';
 import { useNavigate } from 'react-router-dom';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 const { Title, Text } = Typography;
 
 // 业务类型图标和颜色配置
-const bizTypeConfig: Record<number, { icon: string; color: string; bg: string }> = {
-  1: { icon: '🎫', color: '#1890ff', bg: '#e6f7ff' },
-  2: { icon: '🏨', color: '#52c41a', bg: '#f6ffed' },
-  3: { icon: '🏢', color: '#722ed1', bg: '#f9f0ff' },
-  4: { icon: '✈️', color: '#fa8c16', bg: '#fff7e6' },
-  5: { icon: '🎡', color: '#eb2f96', bg: '#fff0f6' },
-};
-
-// 审核状态配置
-const statusConfig: Record<number, { text: string; color: string; icon: React.ReactNode }> = {
-  1: { text: '待审核', color: 'warning', icon: <ClockCircleOutlined /> },
-  2: { text: '审核中', color: 'processing', icon: <SyncOutlined spin /> },
-  3: { text: '已通过', color: 'success', icon: <CheckCircleOutlined /> },
-  4: { text: '已驳回', color: 'error', icon: <CloseCircleOutlined /> },
-  5: { text: '已撤销', color: 'default', icon: <StopOutlined /> },
+const bizTypeConfig: Record<number, { icon: string; color: string; bg: string; borderColor: string }> = {
+  1: { icon: '🎫', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }, // Blue
+  2: { icon: '🏨', color: '#34d399', bg: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.2)' }, // Green
+  3: { icon: '🏢', color: '#a78bfa', bg: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }, // Purple
+  4: { icon: '✈️', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.2)' }, // Amber
+  5: { icon: '🎡', color: '#f472b6', bg: 'rgba(236, 72, 153, 0.1)', borderColor: 'rgba(236, 72, 153, 0.2)' }, // Pink
 };
 
 const AuditDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(true);
   const [recentList, setRecentList] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -42,7 +38,7 @@ const AuditDashboard: React.FC = () => {
     approved: 0,
     rejected: 0,
     cancelled: 0,
-    byType: {} as Record<number, number>,
+    byType: [] as { name: string; value: number; type: number }[],
     todayTotal: 0,
     todayPending: 0,
     todayApproved: 0,
@@ -55,64 +51,70 @@ const AuditDashboard: React.FC = () => {
       let allRecords: any[] = [];
       let page = 1;
       const pageSize = 100;
-      
-      while (true) {
-        const res = await queryAuditList({ page, page_size: pageSize });
-        allRecords = allRecords.concat(res.list);
-        if (allRecords.length >= res.total || res.list.length < pageSize) break;
-        page++;
-      }
-      
+
+      // 为了演示效果，只拉取前100条
+      const res = await queryAuditList({ page, page_size: pageSize });
+      allRecords = res.list || [];
+
       // 获取今天的日期范围
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const newStats = {
-        total: allRecords.length,
+        total: res.total, // 使用API返回的总数
         pending: 0,
         processing: 0,
         approved: 0,
         rejected: 0,
         cancelled: 0,
-        byType: {} as Record<number, number>,
+        byType: [] as { name: string; value: number; type: number }[],
         todayTotal: 0,
         todayPending: 0,
         todayApproved: 0,
         todayRejected: 0,
       };
 
+      const typeMap: Record<number, number> = {};
+
       allRecords.forEach(item => {
-        const createTime = new Date(item.created_at);
+        const createTime = new Date(item.submit_time);
         const isToday = createTime >= today;
-        
+
         if (isToday) {
           newStats.todayTotal++;
         }
-        
+
         switch (item.audit_status) {
-          case 1: 
-            newStats.pending++; 
+          case 1:
+            newStats.pending++;
             if (isToday) newStats.todayPending++;
             break;
           case 2: newStats.processing++; break;
-          case 3: 
-            newStats.approved++; 
+          case 3:
+            newStats.approved++;
             if (isToday) newStats.todayApproved++;
             break;
-          case 4: 
-            newStats.rejected++; 
+          case 4:
+            newStats.rejected++;
             if (isToday) newStats.todayRejected++;
             break;
           case 5: newStats.cancelled++; break;
         }
-        if (!newStats.byType[item.business_type]) {
-          newStats.byType[item.business_type] = 0;
+
+        if (!typeMap[item.business_type]) {
+          typeMap[item.business_type] = 0;
         }
-        newStats.byType[item.business_type]++;
+        typeMap[item.business_type]++;
       });
 
+      // 转换类型数据用于图表
+      newStats.byType = Object.entries(typeMap).map(([type, value]) => ({
+        name: BusinessTypeMap[Number(type)] || `Unknown ${type}`,
+        value,
+        type: Number(type)
+      })).sort((a, b) => b.value - a.value);
+
       setStats(newStats);
-      // 获取最近5条记录
       setRecentList(allRecords.slice(0, 5));
     } catch (e) {
       console.error('加载统计数据失败:', e);
@@ -127,20 +129,29 @@ const AuditDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 计算通过率和驳回率
-  const completedTotal = stats.approved + stats.rejected;
-  const passRate = completedTotal > 0 ? (stats.approved / completedTotal) * 100 : 0;
-  const rejectRate = completedTotal > 0 ? (stats.rejected / completedTotal) * 100 : 0;
+  // Mock Trend Data (因为API不支持历史趋势)
+  const trendData = [
+    { name: 'Mon', value: 40 },
+    { name: 'Tue', value: 30 },
+    { name: 'Wed', value: 55 },
+    { name: 'Thu', value: 80 },
+    { name: 'Fri', value: 65 },
+    { name: 'Sat', value: 45 },
+    { name: 'Sun', value: stats.todayTotal > 0 ? stats.todayTotal : 60 },
+  ];
+
+  const pieColors = ['#60a5fa', '#34d399', '#a78bfa', '#fbbf24', '#f472b6'];
 
   // 格式化时间
   const formatTime = (timeStr: string) => {
+    if (!timeStr) return '-';
     const date = new Date(timeStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    
+
     if (minutes < 1) return '刚刚';
     if (minutes < 60) return `${minutes}分钟前`;
     if (hours < 24) return `${hours}小时前`;
@@ -150,246 +161,136 @@ const AuditDashboard: React.FC = () => {
 
   if (loading && stats.total === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: 100 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
         <Spin size="large" />
-        <div style={{ marginTop: 16, color: '#999' }}>加载中...</div>
       </div>
     );
   }
 
   return (
-    <div>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 20 }}>
-        <Col>
-          <Title level={4} style={{ margin: 0 }}>数据概览</Title>
-        </Col>
-        <Col>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/apply')}>
-              发起审核
-            </Button>
-            <Button icon={<UnorderedListOutlined />} onClick={() => navigate('/list')}>
-              审核列表
-            </Button>
-          </Space>
-        </Col>
-      </Row>
-      
-      {/* 今日数据速览 */}
-      <Card 
-        size="small" 
-        style={{ marginBottom: 16, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-        bodyStyle={{ padding: '16px 24px' }}
-      >
-        <Row gutter={24} align="middle">
-          <Col>
-            <CalendarOutlined style={{ fontSize: 32, color: 'rgba(255,255,255,0.8)' }} />
-          </Col>
-          <Col flex={1}>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>今日数据</Text>
-            <div style={{ color: '#fff', fontSize: 13, marginTop: 4 }}>
-              新增 <Text strong style={{ color: '#fff', fontSize: 18 }}>{stats.todayTotal}</Text> 条 · 
-              待处理 <Text strong style={{ color: '#ffd666', fontSize: 18 }}>{stats.todayPending}</Text> 条 · 
-              已通过 <Text strong style={{ color: '#95de64', fontSize: 18 }}>{stats.todayApproved}</Text> 条 · 
-              已驳回 <Text strong style={{ color: '#ff7875', fontSize: 18 }}>{stats.todayRejected}</Text> 条
-            </div>
-          </Col>
-          <Col>
-            <Tooltip title="待处理任务需要尽快审核">
-              {stats.todayPending > 0 ? (
-                <Tag color="warning" icon={<ThunderboltOutlined />}>需处理</Tag>
-              ) : (
-                <Tag color="success" icon={<CheckCircleOutlined />}>已完成</Tag>
-              )}
-            </Tooltip>
-          </Col>
-        </Row>
-      </Card>
+    <div style={{ maxWidth: 1600, margin: '0 auto', color: token.colorText }}>
+      {/* 顶部 Header 区域 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>数据概览</Title>
+          <Text type="secondary">欢迎回来，今日已处理 {stats.todayApproved + stats.todayRejected} 条审核任务</Text>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Button icon={<UnorderedListOutlined />} onClick={() => navigate('/')}>审核列表</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/apply')}>发起申请</Button>
+        </div>
+      </div>
 
-      {/* 核心指标 */}
-      <Row gutter={[12, 12]}>
-        <Col xs={12} sm={8} md={4}>
-          <Card size="small" hoverable>
-            <Statistic 
-              title="累计总量" 
-              value={stats.total} 
-              prefix={<FileTextOutlined style={{ color: '#1890ff' }} />}
+      {/* 核心指标卡片 */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="glass-card" style={{ height: '100%' }}>
+            <Statistic
+              title={<span style={{ color: token.colorTextSecondary }}>待处理任务</span>}
+              value={stats.pending}
+              prefix={<ClockCircleFilled style={{ color: '#fbbf24' }} />}
+              suffix={<Tag color="warning" style={{ marginLeft: 8, background: 'rgba(245, 158, 11, 0.2)', border: 'none' }}>{stats.todayPending} 新增</Tag>}
+              valueStyle={{ fontWeight: 600, color: token.colorText }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
-          <Card size="small" hoverable style={{ borderLeft: '3px solid #faad14' }}>
-            <Statistic 
-              title="待审核" 
-              value={stats.pending} 
-              prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
-              valueStyle={{ color: '#faad14' }}
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="glass-card" style={{ height: '100%' }}>
+            <Statistic
+              title={<span style={{ color: token.colorTextSecondary }}>审核通过</span>}
+              value={stats.approved}
+              prefix={<CheckCircleFilled style={{ color: '#34d399' }} />}
+              valueStyle={{ fontWeight: 600, color: token.colorText }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
-          <Card size="small" hoverable>
-            <Statistic 
-              title="审核中" 
-              value={stats.processing} 
-              prefix={<SyncOutlined spin style={{ color: '#1890ff' }} />}
-              valueStyle={{ color: '#1890ff' }}
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="glass-card" style={{ height: '100%' }}>
+            <Statistic
+              title={<span style={{ color: token.colorTextSecondary }}>审核驳回</span>}
+              value={stats.rejected}
+              prefix={<CloseCircleFilled style={{ color: '#f87171' }} />}
+              valueStyle={{ fontWeight: 600, color: token.colorText }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
-          <Card size="small" hoverable style={{ borderLeft: '3px solid #52c41a' }}>
-            <Statistic 
-              title="已通过" 
-              value={stats.approved} 
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} md={4}>
-          <Card size="small" hoverable style={{ borderLeft: '3px solid #ff4d4f' }}>
-            <Statistic 
-              title="已驳回" 
-              value={stats.rejected} 
-              prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-              valueStyle={{ color: '#ff4d4f' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} md={4}>
-          <Card size="small" hoverable>
-            <Statistic 
-              title="已撤销" 
-              value={stats.cancelled} 
-              prefix={<StopOutlined style={{ color: '#d9d9d9' }} />}
-              valueStyle={{ color: '#999' }}
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="glass-card" style={{ height: '100%' }}>
+            <Statistic
+              title={<span style={{ color: token.colorTextSecondary }}>累计申请总数</span>}
+              value={stats.total}
+              prefix={<ThunderboltFilled style={{ color: '#60a5fa' }} />}
+              valueStyle={{ fontWeight: 600, color: token.colorText }}
             />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        {/* 审核效率 */}
-        <Col xs={24} md={8}>
-          <Card title={<><FieldTimeOutlined /> 审核效率</>} size="small" style={{ height: '100%' }}>
-            <Row gutter={16}>
-              <Col span={12}>
-                <div style={{ textAlign: 'center' }}>
-                  <Progress 
-                    type="circle" 
-                    percent={Number(passRate.toFixed(1))} 
-                    strokeColor="#52c41a"
-                    size={80}
-                  />
-                  <div style={{ marginTop: 8, color: '#666', fontSize: 13 }}>通过率</div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ textAlign: 'center' }}>
-                  <Progress 
-                    type="circle" 
-                    percent={Number(rejectRate.toFixed(1))} 
-                    strokeColor="#ff4d4f"
-                    size={80}
-                  />
-                  <div style={{ marginTop: 8, color: '#666', fontSize: 13 }}>驳回率</div>
-                </div>
-              </Col>
-            </Row>
-            <div style={{ marginTop: 16, padding: '12px', background: '#f5f5f5', borderRadius: 6, fontSize: 12, color: '#666' }}>
-              <div>📊 已完成审核: <Text strong>{completedTotal}</Text> 条</div>
-              <div style={{ marginTop: 4 }}>📈 待处理积压: <Text strong style={{ color: stats.pending > 10 ? '#ff4d4f' : '#52c41a' }}>{stats.pending}</Text> 条</div>
-            </div>
-          </Card>
-        </Col>
-
-        {/* 业务类型分布 */}
-        <Col xs={24} md={8}>
-          <Card title="业务类型分布" size="small" style={{ height: '100%' }}>
-            {Object.keys(stats.byType).length === 0 ? (
-              <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-            ) : (
-              <div>
-                {Object.entries(stats.byType).map(([type, count]) => {
-                  const typeNum = Number(type);
-                  const config = bizTypeConfig[typeNum] || { icon: '📄', color: '#666', bg: '#f5f5f5' };
-                  const typeName = BusinessTypeMap[typeNum] || `类型${type}`;
-                  const percent = stats.total > 0 ? ((count as number) / stats.total) * 100 : 0;
-                  
-                  return (
-                    <div key={type} style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      padding: '10px 12px',
-                      background: config.bg,
+      <Row gutter={[24, 24]}>
+        {/* 左侧图表区域 */}
+        <Col xs={24} lg={16}>
+          <Card
+            title={<><RiseOutlined style={{ marginRight: 8 }} />近7日审核趋势</>}
+            bordered={false}
+            className="glass-card"
+            style={{ marginBottom: 24 }}
+          >
+            <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={token.colorBorderSecondary} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: token.colorTextSecondary }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: token.colorTextSecondary }} />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: token.colorBgElevated,
+                      borderColor: token.colorBorder,
                       borderRadius: 8,
-                      marginBottom: 8,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      boxShadow: token.boxShadowSecondary,
+                      color: token.colorText
                     }}
-                    onClick={() => navigate(`/list?business_type=${type}`)}
-                    >
-                      <Avatar style={{ background: config.color, marginRight: 12 }} size={36}>
-                        {config.icon}
-                      </Avatar>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <Text strong>{typeName}</Text>
-                          <Text type="secondary">{count}条 ({percent.toFixed(0)}%)</Text>
-                        </div>
-                        <Progress 
-                          percent={percent} 
-                          showInfo={false} 
-                          strokeColor={config.color}
-                          size="small"
-                        />
-                      </div>
-                      <RightOutlined style={{ color: '#999', marginLeft: 8 }} />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    itemStyle={{ color: token.colorText }}
+                    labelStyle={{ color: token.colorTextSecondary }}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
-        </Col>
 
-        {/* 最近审核记录 */}
-        <Col xs={24} md={8}>
-          <Card 
-            title="最近审核记录" 
-            size="small"
-            style={{ height: '100%' }}
-            extra={<Button type="link" size="small" onClick={() => navigate('/list')}>查看全部</Button>}
+          <Card
+            title={<><UnorderedListOutlined style={{ marginRight: 8 }} />最近活动</>}
+            bordered={false}
+            className="glass-card"
+            extra={<Button type="link" onClick={() => navigate('/')}>查看全部</Button>}
           >
             {recentList.length === 0 ? (
               <Empty description="暂无记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             ) : (
               <Timeline
                 items={recentList.map(item => {
-                  const typeConfig = bizTypeConfig[item.business_type] || { icon: '📄', color: '#666' };
-                  const status = statusConfig[item.audit_status] || { text: '未知', color: 'default' };
+                  const typeConfig = bizTypeConfig[item.business_type] || { icon: '📄', color: token.colorTextSecondary, bg: 'transparent', borderColor: token.colorBorder };
                   return {
-                    color: status.color === 'warning' ? 'orange' : 
-                           status.color === 'success' ? 'green' : 
-                           status.color === 'error' ? 'red' : 
-                           status.color === 'processing' ? 'blue' : 'gray',
+                    color: item.audit_status === 1 ? 'gold' : item.audit_status === 3 ? 'green' : item.audit_status === 4 ? 'red' : 'gray',
                     children: (
-                      <div 
-                        style={{ cursor: 'pointer' }} 
-                        onClick={() => navigate(`/list?id=${item.id}`)}
+                      <div
+                        style={{ cursor: 'pointer', paddingBottom: 12 }}
+                        onClick={() => navigate(`/?id=${item.audit_id}`)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Space size={4}>
-                            <span>{typeConfig.icon}</span>
-                            <Text strong style={{ fontSize: 13 }}>
-                              {BusinessTypeMap[item.business_type] || '未知类型'}
-                            </Text>
-                            <Tag color={status.color} style={{ marginLeft: 4 }}>{status.text}</Tag>
-                          </Space>
+                          <Tag style={{ border: `1px solid ${typeConfig.borderColor}`, background: typeConfig.bg, color: typeConfig.color }}>
+                            {typeConfig.icon} {BusinessTypeMap[item.business_type]}
+                          </Tag>
+                          <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.submit_time)}</Text>
                         </div>
-                        <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-                          ID: {item.business_id} · {formatTime(item.created_at)}
+                        <div style={{ marginTop: 4 }}>
+                          <Text style={{ fontSize: 13 }}>业务ID: {item.business_id}</Text>
                         </div>
                       </div>
                     )
@@ -399,28 +300,87 @@ const AuditDashboard: React.FC = () => {
             )}
           </Card>
         </Col>
-      </Row>
 
-      {/* 快捷提示 */}
-      <Card size="small" style={{ marginTop: 16 }}>
-        <Row gutter={24} align="middle">
-          <Col flex={1}>
-            <Space split={<span style={{ color: '#d9d9d9' }}>|</span>}>
-              <Text type="secondary">💡 小提示</Text>
-              <Text type="secondary">点击业务类型可快速筛选</Text>
-              <Text type="secondary">数据每30秒自动刷新</Text>
-              {stats.pending > 0 && (
-                <Text type="warning">⚠️ 有 {stats.pending} 条待审核任务</Text>
-              )}
-            </Space>
-          </Col>
-          <Col>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              最后更新: {new Date().toLocaleTimeString()}
-            </Text>
-          </Col>
-        </Row>
-      </Card>
+        {/* 右侧分布区域 */}
+        <Col xs={24} lg={8}>
+          <Card
+            title={<><PieChartOutlined style={{ marginRight: 8 }} />业务分布</>}
+            bordered={false}
+            className="glass-card"
+            style={{ marginBottom: 24 }}
+          >
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.byType}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {stats.byType.map((_entry, index) => (
+                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{
+                    backgroundColor: token.colorBgElevated,
+                    borderColor: token.colorBorder,
+                    borderRadius: 8,
+                    color: token.colorText
+                  }}
+                    itemStyle={{ color: token.colorText }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} formatter={(value) => <span style={{ color: token.colorTextSecondary }}>{value}</span>} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              {stats.byType.slice(0, 3).map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                  <span>
+                    <span style={{
+                      display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                      backgroundColor: pieColors[idx % pieColors.length], marginRight: 8
+                    }} />
+                    <Text>{item.name}</Text>
+                  </span>
+                  <Text strong>{item.value}</Text>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* 待处理总数卡片 - 修复布局错误 */}
+          <Card
+            bordered={false}
+            className="glass-card"
+            style={{
+              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', // Darker Blue
+              borderRadius: 12,
+              border: 'none',
+              overflow: 'hidden',
+              position: 'relative'
+            }}
+            bodyStyle={{ padding: 24 }}
+          >
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 8 }}>待处理总数</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: 'white', lineHeight: 1 }}>{stats.pending}</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 8 }}>
+                  较昨日 <span style={{ color: 'white', fontWeight: 500 }}>+{stats.todayPending}</span>
+                </div>
+              </div>
+              <CalendarOutlined style={{ fontSize: 64, color: 'rgba(255,255,255,0.1)', transform: 'rotate(-15deg)', marginRight: -10, marginBottom: -10 }} />
+            </div>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };

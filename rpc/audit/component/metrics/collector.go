@@ -19,13 +19,13 @@ const (
 // Snapshot 监控快照
 
 type Snapshot struct {
-	TotalCount      int64
-	AvgLatencyMs    float64
-	ThroughputQPS   float64
-	Accuracy        float64
-	ManualTotal     int64
-	ManualCorrect   int64
-	UpdatedAt       time.Time
+	TotalCount    int64
+	AvgLatencyMs  float64
+	ThroughputQPS float64
+	Accuracy      float64
+	ManualTotal   int64
+	ManualCorrect int64
+	UpdatedAt     time.Time
 }
 
 // Collector 监控数据采集
@@ -33,7 +33,6 @@ type Snapshot struct {
 // - 吞吐量使用滑动时间窗  ?秒级  ?统计
 // - 延迟使用累计求和/计数求平  ?
 // - 准确率基于人工审核结果校验模型建  ?
-
 
 type Collector struct {
 	totalCount   int64
@@ -150,4 +149,3 @@ func (w *throughputWindow) QPS(now time.Time) float64 {
 	}
 	return float64(total) / float64(w.size)
 }
-

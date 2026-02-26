@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
 	"piaowu/common/config"
 	"piaowu/rpc/audit/component/metrics"
 	"piaowu/rpc/audit/component/ml"
 	"piaowu/rpc/audit/component/rule_engine"
 	"piaowu/rpc/audit/component/threshold"
-	"fmt"
-	"math"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -285,4 +285,3 @@ func roundFloat(v float64, scale int) float64 {
 	p := math.Pow10(scale)
 	return math.Round(v*p) / p
 }
-

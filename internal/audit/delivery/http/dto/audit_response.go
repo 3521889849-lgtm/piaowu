@@ -82,36 +82,36 @@ type AuditListResponse struct {
 	List  []*AuditDetailResponse `json:"list"`  // 列表
 }
 
-//// GetAuditStatusText 获取审核状态文  ?
-//func GetAuditStatusText(status int8) string {
-//	switch status {
-//	case 1:
-//		return "待审  ?
-//	case 2:
-//		return "审核  ?
-//	case 3:
-//		return "通过"
-//	case 4:
-//		return "驳回"
-//	case 5:
-//		return "撤销"
-//	default:
-//		return "未知"
-//	}
-//}
-//
-//// GetTicketTypeText 获取车票类型文本
-//func GetTicketTypeText(ticketType int8) string {
-//	switch ticketType {
-//	case 1:
-//		return "高铁"
-//	case 2:
-//		return "动车"
-//	case 3:
-//		return "普通火  ?
-//	case 4:
-//		return "汽车  ?
-//	default:
-//		return "未知"
-//	}
-//}
+// GetAuditStatusText 获取审核状态文本
+func GetAuditStatusText(status int8) string {
+	switch status {
+	case 1:
+		return "待审核"
+	case 2:
+		return "审核中"
+	case 3:
+		return "通过"
+	case 4:
+		return "驳回"
+	case 5:
+		return "撤销"
+	default:
+		return "未知"
+	}
+}
+
+// GetTicketTypeText 获取车票类型文本
+func GetTicketTypeText(ticketType int8) string {
+	switch ticketType {
+	case 1:
+		return "高铁"
+	case 2:
+		return "动车"
+	case 3:
+		return "普通火车"
+	case 4:
+		return "汽车票"
+	default:
+		return "未知"
+	}
+}

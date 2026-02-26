@@ -2,9 +2,9 @@ package rule_engine
 
 import (
 	"encoding/json"
-	"piaowu/common/model/audit"
 	"fmt"
 	"log"
+	"piaowu/common/model/audit"
 	"reflect"
 	"regexp"
 	"sort"
@@ -260,4 +260,3 @@ func toFloat(v interface{}) (float64, bool) {
 	}
 	return 0, false
 }
-

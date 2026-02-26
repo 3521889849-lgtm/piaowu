@@ -3,9 +3,9 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"piaowu/common/model/audit"
 	"piaowu/internal/audit/delivery/http/dto"
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -40,7 +40,7 @@ func (uc *AuditUsecase) SubmitAudit(ctx context.Context, req *dto.SubmitAuditReq
 		AuditStatus:    1, // 待审  ?
 		SubmitUserId:   userID,
 		SubmitUserName: userName,
-		Extra:          "{}",  // 默认空JSON对象
+		Extra:          "{}", // 默认空JSON对象
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -165,7 +165,7 @@ func (uc *AuditUsecase) GetAuditDetail(ctx context.Context, auditID uint64) (*dt
 	var auditMain audit.AuditMain
 	if err := uc.db.WithContext(ctx).First(&auditMain, auditID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("审核记录不存  ?)
+			return nil, errors.New("审核记录不存在")
 		}
 		return nil, fmt.Errorf("查询审核记录失败: %w", err)
 	}
@@ -386,7 +386,7 @@ func (uc *AuditUsecase) ProcessAudit(ctx context.Context, req *dto.AuditActionRe
 	var auditMain audit.AuditMain
 	if err := uc.db.WithContext(ctx).First(&auditMain, req.AuditID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("审核记录不存  ?)
+			return errors.New("审核记录不存在")
 		}
 		return fmt.Errorf("查询审核记录失败: %w", err)
 	}
@@ -411,7 +411,7 @@ func (uc *AuditUsecase) ProcessAudit(ctx context.Context, req *dto.AuditActionRe
 	} else if req.Action == "reject" {
 		updates["audit_status"] = 4 // 驳回
 	} else {
-		return errors.New("无效的审核操  ?)
+		return errors.New("无效的审核操作")
 	}
 
 	if err := uc.db.WithContext(ctx).Model(&auditMain).Updates(updates).Error; err != nil {

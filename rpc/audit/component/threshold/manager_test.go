@@ -21,4 +21,3 @@ func TestManager_Threshold(t *testing.T) {
 		t.Fatalf("threshold out of range: %v", v)
 	}
 }
-

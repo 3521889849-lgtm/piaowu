@@ -67,7 +67,7 @@ api.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       const data: any = error.response.data;
-      
+
       switch (status) {
         case 500:
           message.error({
@@ -307,13 +307,23 @@ export const queryAuditList = async (req: QueryAuditRequest): Promise<AuditListR
   if (req.audit_status) params.append('audit_status', req.audit_status.toString());
   if (req.page) params.append('page', req.page.toString());
   if (req.page_size) params.append('page_size', req.page_size.toString());
-  
+
   const { data } = await api.get<ApiResponse<AuditListResponse>>(`/list?${params.toString()}`);
   return data.data!;
 };
 
 export const processAudit = async (req: AuditActionRequest): Promise<void> => {
   await api.post<ApiResponse>('/process', req);
+};
+
+export const queryAuditRecord = async (params: { audit_id?: number; biz_id?: number; biz_type?: number }): Promise<AuditDetail> => {
+  const qs = new URLSearchParams();
+  if (params.audit_id) qs.append('audit_id', params.audit_id.toString());
+  if (params.biz_id) qs.append('biz_id', params.biz_id.toString());
+  if (params.biz_type) qs.append('biz_type', params.biz_type.toString());
+
+  const { data } = await api.get<ApiResponse<AuditDetail>>(`/record?${qs.toString()}`);
+  return data.data!;
 };
 
 // 常量映射

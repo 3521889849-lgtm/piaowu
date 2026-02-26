@@ -24,4 +24,3 @@ func TestCollector_Snapshot(t *testing.T) {
 		t.Fatalf("want accuracy > 0")
 	}
 }
-

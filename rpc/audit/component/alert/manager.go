@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"piaowu/rpc/audit/component/metrics"
 	"log"
 	"net/http"
+	"piaowu/rpc/audit/component/metrics"
 	"time"
 )
 
@@ -91,4 +91,3 @@ func (m *Manager) checkAndAlert(s metrics.Snapshot) {
 		_, _ = http.Post(m.cfg.WebhookURL, "application/json", bytes.NewReader(b))
 	}
 }
-

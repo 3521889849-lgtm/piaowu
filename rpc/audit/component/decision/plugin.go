@@ -20,8 +20,8 @@ type Plugin interface {
 // 支持并发安全注册，满足运行期动态扩  ?
 
 type PluginManager struct {
-	mu       sync.RWMutex
-	plugins  []Plugin
+	mu      sync.RWMutex
+	plugins []Plugin
 }
 
 func NewPluginManager() *PluginManager {
@@ -58,4 +58,3 @@ func (pm *PluginManager) AfterDecision(ctx context.Context, result *Result) erro
 	}
 	return nil
 }
-
